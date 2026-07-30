@@ -390,6 +390,10 @@ with st.sidebar:
     search_col1, search_col2 = st.columns([3, 1])
     with search_col1:
         search_clicked = st.button("🔍 Search", use_container_width=True, key="search_btn")
+    with search_col2:
+        if st.button("✖️", help="Clear search results", use_container_width=True, key="clear_search_btn"):
+            st.session_state.search_results = []
+            st.rerun()
     
     if search_clicked and search_query:
         try:
@@ -412,7 +416,7 @@ with st.sidebar:
         except Exception as e:
             st.error(f"Search failed: {e}")
     
-    # Display search results as selectable options
+    # Display search results as selectable options safely
     if st.session_state.search_results:
         location_names = [r['display_name'][:60] + "..." if len(r['display_name']) > 60 else r['display_name'] 
                          for r in st.session_state.search_results]
@@ -422,7 +426,8 @@ with st.sidebar:
             format_func=lambda i: location_names[i],
             key="location_select"
         )
-        selected = st.session_state.search_results[selected_idx]
+        safe_idx = min(max(0, selected_idx), len(st.session_state.search_results) - 1)
+        selected = st.session_state.search_results[safe_idx]
         disaster_lat = float(selected['lat'])
         disaster_lng = float(selected['lng'])
         st.info(f"📍 {disaster_lat:.4f}, {disaster_lng:.4f}")
@@ -557,14 +562,17 @@ with col2:
         # Call optimization backend
         try:
             # 1. FETCH HOSPITALS (Map Display)
-            with st.spinner("🌍 Fetching live hospital data..."):
-                hosp_response = requests.get(
-                    f"http://localhost:5000/hospitals?lat={disaster_lat}&lng={disaster_lng}&radius_km=10&source=osm",
-                    timeout=20
-                )
-                if hosp_response.status_code == 200:
-                    data = hosp_response.json()
-                    st.session_state.hospitals_data = data.get('hospitals', [])
+            try:
+                with st.spinner("🌍 Fetching live hospital data..."):
+                    hosp_response = requests.get(
+                        f"http://localhost:5000/hospitals?lat={disaster_lat}&lng={disaster_lng}&radius_km=10&source=osm",
+                        timeout=15
+                    )
+                    if hosp_response.status_code == 200:
+                        data = hosp_response.json()
+                        st.session_state.hospitals_data = data.get('hospitals', [])
+            except Exception as err:
+                print(f"Hospital fetch fallback: {err}")
             
             # 2. OPTIMIZATION REQUEST
             with st.spinner("🏥 Optimizing allocation..."):
@@ -577,7 +585,7 @@ with col2:
                         "disaster_type": disaster_type,
                         "source": "osm"
                     },
-                    timeout=45
+                    timeout=20
                 )
             
             if opt_response.status_code == 200:
@@ -656,22 +664,25 @@ with col2:
                 pass
 
             # 4. AMBULANCE DISPATCH REQUEST
-            with st.spinner("🚑 Dispatching ambulances..."):
-                amb_response = requests.post(
-                    "http://localhost:5000/ambulance-dispatch",
-                    json={"lat": disaster_lat, "lng": disaster_lng, "source": "osm"},
-                    timeout=30
-                )
-            
-            if amb_response.status_code == 200:
-                amb_result = amb_response.json()
-                for dispatch in amb_result.get('dispatch', [])[:2]:
-                    st.session_state.messages.append({
-                        "timestamp": datetime.now().strftime("%H:%M:%S"),
-                        "agent": "Emergency Agent",
-                        "message": f"🚑 {dispatch['ambulance_id']} dispatched → ETA: {dispatch['eta_minutes']} min",
-                        "type": "success"
-                    })
+            try:
+                with st.spinner("🚑 Dispatching ambulances..."):
+                    amb_response = requests.post(
+                        "http://localhost:5000/ambulance-dispatch",
+                        json={"lat": disaster_lat, "lng": disaster_lng, "source": "osm"},
+                        timeout=15
+                    )
+                
+                if amb_response.status_code == 200:
+                    amb_result = amb_response.json()
+                    for dispatch in amb_result.get('dispatch', [])[:2]:
+                        st.session_state.messages.append({
+                            "timestamp": datetime.now().strftime("%H:%M:%S"),
+                            "agent": "Emergency Agent",
+                            "message": f"🚑 {dispatch['ambulance_id']} dispatched → ETA: {dispatch['eta_minutes']} min",
+                            "type": "success"
+                        })
+            except Exception as amb_err:
+                print(f"Ambulance dispatch fallback: {amb_err}")
 
             # 5. EMERGENCY CALLING AGENT
             with st.spinner("📞 Calling emergency services..."):
@@ -690,7 +701,7 @@ with col2:
                     
                     if call_response.status_code == 200:
                         call_data = call_response.json()
-                        st.session_state.emergency_calls = call_data.get('calls', [])
+                        st.session_state.emergency_calls = call_data.get('calls', call_data.get('call_records', []))
                         
                         # Add calling agent messages
                         connected_count = sum(1 for c in st.session_state.emergency_calls if c.get('status') == 'CONNECTED')
