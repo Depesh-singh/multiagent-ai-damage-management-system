@@ -627,14 +627,16 @@ def emergency_calls():
         )
 
         for record in call_records:
-            status = "success" if record.get("status") == "connected" else "warning"
+            status_type = "success" if record.get("status") in ["CONNECTED", "DISPATCHED"] else "warning"
+            svc_name = record.get("service_name", "Service")
             log_agent_message("Emergency Calling Agent",
-                f"Called {record.get('service', 'Unknown')}: {record.get('status', 'unknown')}", status)
+                f"Called {svc_name}: {record.get('status', 'unknown')}", status_type)
 
         log_agent_message("Emergency Calling Agent",
             f"Completed {len(call_records)} emergency calls", "success")
 
         return jsonify({
+            "calls": call_records,
             "call_records": call_records,
             "total_calls": len(call_records),
             "disaster_type": disaster_type,
@@ -649,13 +651,15 @@ def emergency_calls():
 def emergency_contacts_endpoint():
     """
     Get emergency contacts, optionally filtered by disaster type.
-    Query params: disaster_type (optional)
+    Query params: disaster_type (optional), lat, lng
     """
     try:
         disaster_type = request.args.get('disaster_type', None)
+        lat = float(request.args.get('lat', 22.721))
+        lng = float(request.args.get('lng', 88.485))
 
         if disaster_type:
-            contacts = get_emergency_contacts(disaster_type)
+            contacts = get_emergency_contacts(disaster_type, lat, lng)
         else:
             contacts = EMERGENCY_CONTACTS
 

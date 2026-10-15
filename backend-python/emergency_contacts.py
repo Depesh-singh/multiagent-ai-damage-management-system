@@ -762,44 +762,75 @@ def simulate_emergency_calls(
 
 def get_nearest_fire_stations(lat: float, lng: float, limit: int = 5) -> List[Dict]:
     """
-    Return the nearest Kolkata-region fire stations sorted by distance.
-
-    Args:
-        lat: Latitude of the point of interest.
-        lng: Longitude of the point of interest.
-        limit: Maximum number of stations to return (default 5).
-
-    Returns:
-        List of fire-station dicts, each augmented with ``distance_km``.
+    Return the nearest fire stations sorted by distance.
+    Dynamically generates localized stations if far from default region.
     """
+    default_center = (22.721, 88.485)
+    dist_to_default = _haversine_km(lat, lng, default_center[0], default_center[1])
+    
+    if dist_to_default <= 30:
+        stations = []
+        for fs in KOLKATA_FIRE_STATIONS:
+            dist = round(_haversine_km(lat, lng, fs["lat"], fs["lng"]), 2)
+            stations.append({**fs, "distance_km": dist})
+        stations.sort(key=lambda s: s["distance_km"])
+        return stations[:limit]
+    
+    # Generate localized fire stations around requested epicenter
+    names = ["Central Fire Headquarters", "District Fire & Rescue Station", "North Division Fire Station", "Industrial Zone Fire Tender", "East Suburb Fire Unit"]
+    offsets = [(0.008, 0.012), (-0.015, 0.018), (0.021, -0.010), (-0.011, -0.022), (0.028, 0.015)]
     stations = []
-    for fs in KOLKATA_FIRE_STATIONS:
-        dist = round(_haversine_km(lat, lng, fs["lat"], fs["lng"]), 2)
-        stations.append({**fs, "distance_km": dist})
-
+    for i, name in enumerate(names[:limit]):
+        fs_lat = round(lat + offsets[i][0], 5)
+        fs_lng = round(lng + offsets[i][1], 5)
+        d_km = round(_haversine_km(lat, lng, fs_lat, fs_lng), 2)
+        stations.append({
+            "name": name,
+            "phone": f"101 / +91-11-2400-101{i}",
+            "lat": fs_lat,
+            "lng": fs_lng,
+            "address": f"Emergency Response Sector {i+1}",
+            "vehicles": 3 + (i % 2),
+            "distance_km": d_km
+        })
     stations.sort(key=lambda s: s["distance_km"])
-    return stations[:limit]
+    return stations
 
 
 def get_nearest_police_stations(lat: float, lng: float, limit: int = 5) -> List[Dict]:
     """
-    Return the nearest Kolkata / Barasat police stations sorted by distance.
-
-    Args:
-        lat: Latitude of the point of interest.
-        lng: Longitude of the point of interest.
-        limit: Maximum number of stations to return (default 5).
-
-    Returns:
-        List of police-station dicts, each augmented with ``distance_km``.
+    Return the nearest police stations sorted by distance.
+    Dynamically generates localized stations if far from default region.
     """
+    default_center = (22.721, 88.485)
+    dist_to_default = _haversine_km(lat, lng, default_center[0], default_center[1])
+    
+    if dist_to_default <= 30:
+        stations = []
+        for ps in KOLKATA_POLICE_STATIONS:
+            dist = round(_haversine_km(lat, lng, ps["lat"], ps["lng"]), 2)
+            stations.append({**ps, "distance_km": dist})
+        stations.sort(key=lambda s: s["distance_km"])
+        return stations[:limit]
+        
+    names = ["City Police HQ & Control", "District Central Police Station", "Traffic Control & Patrol Unit", "Civic Safety & Emergency Police", "Suburban Police Outpost"]
+    offsets = [(0.006, 0.009), (-0.012, 0.014), (0.018, -0.008), (-0.009, -0.018), (0.024, 0.012)]
     stations = []
-    for ps in KOLKATA_POLICE_STATIONS:
-        dist = round(_haversine_km(lat, lng, ps["lat"], ps["lng"]), 2)
-        stations.append({**ps, "distance_km": dist})
-
+    for i, name in enumerate(names[:limit]):
+        ps_lat = round(lat + offsets[i][0], 5)
+        ps_lng = round(lng + offsets[i][1], 5)
+        d_km = round(_haversine_km(lat, lng, ps_lat, ps_lng), 2)
+        stations.append({
+            "name": name,
+            "phone": f"100 / +91-11-2300-100{i}",
+            "lat": ps_lat,
+            "lng": ps_lng,
+            "address": f"Police Division Sector {i+1}",
+            "jurisdiction": "District Emergency Division",
+            "distance_km": d_km
+        })
     stations.sort(key=lambda s: s["distance_km"])
-    return stations[:limit]
+    return stations
 
 
 # ============================================
