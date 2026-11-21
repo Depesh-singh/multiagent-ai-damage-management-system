@@ -7,6 +7,7 @@ import os
 import json
 import requests
 import sys
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import List, Dict, Optional
 from abc import ABC, abstractmethod
@@ -15,20 +16,21 @@ from abc import ABC, abstractmethod
 # DATA MODELS
 # ============================================
 
+@dataclass
 class Hospital:
-    def __init__(self, name: str, beds: int, lat: float, lng: float, 
-                 address: str = "", phone: str = "", specialty: str = "General"):
-        self.name = name
-        self.beds = beds
-        self.lat = lat
-        self.lng = lng
-        self.address = address
-        self.phone = phone
-        self.specialty = specialty
+    name: str
+    beds: int
+    lat: float
+    lng: float
+    address: str = ""
+    phone: str = ""
+    specialty: str = "General"
     
     def to_dict(self) -> dict:
         return {
+            "name": self.name,
             "Hospital": self.name,
+            "beds": self.beds,
             "Beds": self.beds,
             "lat": self.lat,
             "lng": self.lng,
@@ -37,14 +39,16 @@ class Hospital:
             "specialty": self.specialty
         }
 
+@dataclass
 class Ambulance:
-    def __init__(self, ambulance_id: str, lat: float, lng: float, 
-                 status: str = "available", driver: str = ""):
-        self.id = ambulance_id
-        self.lat = lat
-        self.lng = lng
-        self.status = status
-        self.driver = driver
+    id: str
+    lat: float
+    lng: float
+    status: str = "available"          # available | dispatched | en_route | returning
+    driver: str = ""
+    capacity: int = 2                  # patients per ambulance
+    ambulance_type: str = "BLS"        # BLS (Basic) | ALS (Advanced)
+    assigned_incident: str = ""        # incident ID for multi-incident tracking
     
     def to_dict(self) -> dict:
         return {
@@ -52,7 +56,10 @@ class Ambulance:
             "lat": self.lat,
             "lng": self.lng,
             "status": self.status,
-            "driver": self.driver
+            "driver": self.driver,
+            "capacity": self.capacity,
+            "ambulance_type": self.ambulance_type,
+            "assigned_incident": self.assigned_incident
         }
 
 # ============================================
@@ -90,19 +97,19 @@ class StaticDataSource(DataSource):
             Hospital("Peerless Hospital",                  350, 22.5207, 88.3984, "360 Panchasayar, Kolkata 700094",            "+91-33-4011-1222", "Multi-Specialty"),
         ]
         self.ambulances = [
-            Ambulance("AMB-001", 22.7210, 88.4810, "available", "Rajesh Kumar"),
-            Ambulance("AMB-002", 22.7240, 88.4870, "available", "Amit Singh"),
-            Ambulance("AMB-003", 22.7180, 88.4920, "available", "Priya Sharma"),
-            Ambulance("AMB-004", 22.7195, 88.4760, "available", "Sujoy Das"),
-            Ambulance("AMB-005", 22.7260, 88.4830, "available", "Mohan Ghosh"),
+            Ambulance("AMB-001", 22.7210, 88.4810, "available", "Rajesh Kumar", 2, "ALS"),
+            Ambulance("AMB-002", 22.7240, 88.4870, "available", "Amit Singh", 2, "BLS"),
+            Ambulance("AMB-003", 22.7180, 88.4920, "available", "Priya Sharma", 3, "ALS"),
+            Ambulance("AMB-004", 22.7195, 88.4760, "available", "Sujoy Das", 2, "BLS"),
+            Ambulance("AMB-005", 22.7260, 88.4830, "available", "Mohan Ghosh", 4, "ALS"),
         ]
     
     def get_hospitals(self, lat: float, lng: float, radius_km: float = 10) -> List[Dict]:
         from geopy.distance import geodesic
-        # Check if requested lat/lng is close to default Kolkata set
+        # Check if requested lat/lng is right at default Kolkata center (within 5km)
         default_center = (22.721, 88.485)
         dist = geodesic(default_center, (lat, lng)).km
-        if dist <= 30:
+        if dist <= 5:
             return [h.to_dict() for h in self.hospitals]
         
         # Dynamically generate realistic local hospitals around requested epicenter
@@ -114,8 +121,8 @@ class StaticDataSource(DataSource):
         ]
         bed_counts = [150, 320, 95, 450, 210, 180, 500, 120]
         offsets = [
-            (0.012, 0.015), (-0.018, 0.022), (0.025, -0.011), (-0.009, -0.025),
-            (0.031, 0.018), (-0.027, -0.019), (0.005, 0.032), (-0.033, 0.007)
+            (0.008, 0.010), (-0.012, 0.014), (0.016, -0.008), (-0.006, -0.015),
+            (0.020, 0.012), (-0.018, -0.012), (0.003, 0.020), (-0.022, 0.005)
         ]
         
         local_hospitals = []
@@ -123,11 +130,13 @@ class StaticDataSource(DataSource):
             h_lat = lat + offsets[i][0]
             h_lng = lng + offsets[i][1]
             local_hospitals.append({
+                "name": name,
                 "Hospital": name,
+                "beds": bed_counts[i],
                 "Beds": bed_counts[i],
                 "lat": round(h_lat, 5),
                 "lng": round(h_lng, 5),
-                "address": f"Emergency Sector {i+1}, District Center",
+                "address": f"Emergency Sector {i+1}, Local District Center",
                 "phone": f"+91-11-2300-400{i}",
                 "specialty": "Trauma & Emergency Response"
             })
@@ -136,17 +145,20 @@ class StaticDataSource(DataSource):
     def get_ambulances(self, lat: float, lng: float, radius_km: float = 10) -> List[Dict]:
         from geopy.distance import geodesic
         default_center = (22.721, 88.485)
-        if geodesic(default_center, (lat, lng)).km <= 30:
+        if geodesic(default_center, (lat, lng)).km <= 5:
             return [a.to_dict() for a in self.ambulances]
             
-        offsets = [(0.005, 0.008), (-0.007, 0.012), (0.011, -0.006), (-0.015, -0.011), (0.003, -0.018)]
+        offsets = [(0.003, 0.005), (-0.005, 0.008), (0.007, -0.004), (-0.009, -0.007), (0.002, -0.011)]
         drivers = ["Ramesh Kumar", "Sanjay Singh", "Anil Mehta", "Vikram Das", "Deepak Sharma"]
         return [{
             "id": f"AMB-00{i+1}",
             "lat": round(lat + offsets[i][0], 5),
             "lng": round(lng + offsets[i][1], 5),
             "status": "available",
-            "driver": drivers[i]
+            "driver": drivers[i],
+            "capacity": 2 if i % 2 == 1 else 3,
+            "ambulance_type": "BLS" if i % 2 == 1 else "ALS",
+            "assigned_incident": ""
         } for i in range(5)]
 
 # ============================================
@@ -193,7 +205,9 @@ class MongoDBDataSource(DataSource):
             }).limit(10))
             
             return [{
+                "name": h.get("name", "Unknown"),
                 "Hospital": h.get("name", "Unknown"),
+                "beds": h.get("beds", 0),
                 "Beds": h.get("beds", 0),
                 "lat": h.get("location", {}).get("coordinates", [0, 0])[1],
                 "lng": h.get("location", {}).get("coordinates", [0, 0])[0],
@@ -205,7 +219,9 @@ class MongoDBDataSource(DataSource):
             # Fallback to simple query
             hospitals = list(self.db.hospitals.find().limit(10))
             return [{
+                "name": h.get("name", "Unknown"),
                 "Hospital": h.get("name", "Unknown"),
+                "beds": h.get("beds", 0),
                 "Beds": h.get("beds", 0),
                 "lat": h.get("lat", 0),
                 "lng": h.get("lng", 0)
@@ -222,7 +238,10 @@ class MongoDBDataSource(DataSource):
                 "lat": a.get("lat", 0),
                 "lng": a.get("lng", 0),
                 "status": a.get("status", "unknown"),
-                "driver": a.get("driver", "")
+                "driver": a.get("driver", ""),
+                "capacity": a.get("capacity", 2),
+                "ambulance_type": a.get("ambulance_type", "BLS"),
+                "assigned_incident": a.get("assigned_incident", "")
             } for a in ambulances]
         except Exception as e:
             print(f"[MongoDB] Ambulance query error: {e}")
@@ -277,11 +296,11 @@ class MongoDBDataSource(DataSource):
 
         # Add ambulances
         ambulances = [
-            {"ambulance_id": "AMB-001", "lat": 22.7210, "lng": 88.4810, "status": "available", "driver": "Rajesh Kumar"},
-            {"ambulance_id": "AMB-002", "lat": 22.7240, "lng": 88.4870, "status": "available", "driver": "Amit Singh"},
-            {"ambulance_id": "AMB-003", "lat": 22.7180, "lng": 88.4920, "status": "available", "driver": "Priya Sharma"},
-            {"ambulance_id": "AMB-004", "lat": 22.7195, "lng": 88.4760, "status": "available", "driver": "Sujoy Das"},
-            {"ambulance_id": "AMB-005", "lat": 22.7260, "lng": 88.4830, "status": "available", "driver": "Mohan Ghosh"},
+            {"ambulance_id": "AMB-001", "lat": 22.7210, "lng": 88.4810, "status": "available", "driver": "Rajesh Kumar", "capacity": 2, "ambulance_type": "ALS", "assigned_incident": ""},
+            {"ambulance_id": "AMB-002", "lat": 22.7240, "lng": 88.4870, "status": "available", "driver": "Amit Singh", "capacity": 2, "ambulance_type": "BLS", "assigned_incident": ""},
+            {"ambulance_id": "AMB-003", "lat": 22.7180, "lng": 88.4920, "status": "available", "driver": "Priya Sharma", "capacity": 3, "ambulance_type": "ALS", "assigned_incident": ""},
+            {"ambulance_id": "AMB-004", "lat": 22.7195, "lng": 88.4760, "status": "available", "driver": "Sujoy Das", "capacity": 2, "ambulance_type": "BLS", "assigned_incident": ""},
+            {"ambulance_id": "AMB-005", "lat": 22.7260, "lng": 88.4830, "status": "available", "driver": "Mohan Ghosh", "capacity": 4, "ambulance_type": "ALS", "assigned_incident": ""},
         ]
         self.db.ambulances.insert_many(ambulances)
         
@@ -326,9 +345,12 @@ class GoogleSheetsDataSource(DataSource):
         hospitals = []
         for row in data:
             try:
+                beds_val = int(row.get("beds", row.get("Beds", 0)))
                 hospitals.append({
+                    "name": row.get("name", row.get("Hospital", "Unknown")),
                     "Hospital": row.get("name", row.get("Hospital", "Unknown")),
-                    "Beds": int(row.get("beds", row.get("Beds", 0))),
+                    "beds": beds_val,
+                    "Beds": beds_val,
                     "lat": float(row.get("lat", row.get("latitude", 0))),
                     "lng": float(row.get("lng", row.get("longitude", 0))),
                     "address": row.get("address", ""),
@@ -350,7 +372,10 @@ class GoogleSheetsDataSource(DataSource):
                     "lat": float(row.get("lat", row.get("latitude", 0))),
                     "lng": float(row.get("lng", row.get("longitude", 0))),
                     "status": row.get("status", "available"),
-                    "driver": row.get("driver", "")
+                    "driver": row.get("driver", ""),
+                    "capacity": int(row.get("capacity", 2)),
+                    "ambulance_type": row.get("ambulance_type", row.get("type", "BLS")),
+                    "assigned_incident": row.get("assigned_incident", "")
                 })
             except (ValueError, TypeError):
                 continue
@@ -376,22 +401,45 @@ class OpenStreetMapDataSource(DataSource):
     ]
     
     def __init__(self):
-        self._cache = {}
+        from collections import OrderedDict
+        self._cache = OrderedDict()
         self._fallback_source = StaticDataSource()
     
+    def _query_overpass(self, query: str, retries: int = 2) -> dict:
+        import time
+        headers = {
+            "User-Agent": "DisasterResponseSystem/1.0 (multiagent-disaster-management; contact@disaster-response.org)",
+            "Accept": "application/json"
+        }
+        for attempt in range(retries + 1):
+            for url in self.OVERPASS_URLS:
+                try:
+                    response = requests.post(url, data={"data": query}, headers=headers, timeout=15)
+                    if response.status_code == 429:
+                        time.sleep((2 ** attempt))
+                        continue
+                    response.raise_for_status()
+                    return response.json()
+                except Exception:
+                    continue
+        return {}
+
     def get_hospitals(self, lat: float, lng: float, radius_km: float = 10) -> List[Dict]:
         """Query OpenStreetMap for hospitals near the location with fallback support"""
         cache_key = (round(lat, 3), round(lng, 3), radius_km)
         if cache_key in self._cache:
             print(f"[OSM Cache] Returning {len(self._cache[cache_key])} cached hospitals")
             sys.stdout.flush()
-            return self._cache[cache_key]
+            # update LRU
+            val = self._cache.pop(cache_key)
+            self._cache[cache_key] = val
+            return val
         
         radius_m = int(radius_km * 1000)
         
         # Overpass QL query for hospitals
         query = f"""
-        [out:json][timeout:5];
+        [out:json][timeout:15];
         (
           node["amenity"="hospital"](around:{radius_m},{lat},{lng});
           way["amenity"="hospital"](around:{radius_m},{lat},{lng});
@@ -400,23 +448,9 @@ class OpenStreetMapDataSource(DataSource):
         out center;
         """
         
-        headers = {
-            "User-Agent": "DisasterResponseSystem/1.0 (multiagent-disaster-management; contact@disaster-response.org)",
-            "Accept": "application/json"
-        }
-        last_error = ""
-        for url in self.OVERPASS_URLS:
+        data = self._query_overpass(query)
+        if data:
             try:
-                print(f"[OSM] Trying Overpass API: {url}...")
-                sys.stdout.flush()
-                response = requests.post(
-                    url,
-                    data={"data": query},
-                    headers=headers,
-                    timeout=5
-                )
-                response.raise_for_status()
-                data = response.json()
                 
                 hospitals = []
                 for element in data.get("elements", []):
@@ -429,9 +463,16 @@ class OpenStreetMapDataSource(DataSource):
                         h_lat = center.get("lat", lat)
                         h_lng = center.get("lon", lng)
                     
+                    try:
+                        beds_val = int(tags.get("beds", 50))
+                    except (ValueError, TypeError):
+                        beds_val = 50
+
                     hospitals.append({
+                        "name": tags.get("name", f"Hospital {element['id']}"),
                         "Hospital": tags.get("name", f"Hospital {element['id']}"),
-                        "Beds": int(tags.get("beds", 50)),
+                        "beds": beds_val,
+                        "Beds": beds_val,
                         "lat": h_lat,
                         "lng": h_lng,
                         "address": tags.get("addr:full", tags.get("addr:street", "")),
@@ -440,21 +481,22 @@ class OpenStreetMapDataSource(DataSource):
                     })
                 
                 if hospitals:
-                    print(f"[OSM] Success! Found {len(hospitals)} hospitals using {url}")
+                    print(f"[OSM] Success! Found {len(hospitals)} hospitals")
                     sys.stdout.flush()
                     self._cache[cache_key] = hospitals
+                    if len(self._cache) > 64:
+                        self._cache.popitem(last=False)
                     return hospitals
                 
             except Exception as e:
-                last_error = str(e)
-                print(f"[OSM] Fast timeout/error with {url}: {last_error}")
-                sys.stdout.flush()
-                continue
+                pass
         
         print(f"[OSM] Overpass nodes failed/slow. Using localized fallback data...")
         sys.stdout.flush()
         fallback_hospitals = self._fallback_source.get_hospitals(lat, lng, radius_km)
         self._cache[cache_key] = fallback_hospitals
+        if len(self._cache) > 64:
+            self._cache.popitem(last=False)
         return fallback_hospitals
     
     def get_ambulances(self, lat: float, lng: float, radius_km: float = 10) -> List[Dict]:
@@ -467,7 +509,7 @@ class OpenStreetMapDataSource(DataSource):
         
         # Query for fire/ambulance stations
         query = f"""
-        [out:json][timeout:25];
+        [out:json][timeout:15];
         (
           node["amenity"="fire_station"](around:{radius_m},{lat},{lng});
           node["emergency"="ambulance_station"](around:{radius_m},{lat},{lng});
@@ -475,22 +517,9 @@ class OpenStreetMapDataSource(DataSource):
         out;
         """
         
-        headers = {
-            "User-Agent": "DisasterResponseSystem/1.0 (multiagent-disaster-management; contact@disaster-response.org)",
-            "Accept": "application/json"
-        }
-        
-        for url in self.OVERPASS_URLS:
+        data = self._query_overpass(query)
+        if data:
             try:
-                response = requests.post(
-                    url,
-                    data={"data": query},
-                    headers=headers,
-                    timeout=30
-                )
-                response.raise_for_status()
-                data = response.json()
-                
                 ambulances = []
                 for i, element in enumerate(data.get("elements", [])[:5]):
                     ambulances.append({
@@ -498,7 +527,10 @@ class OpenStreetMapDataSource(DataSource):
                         "lat": element["lat"],
                         "lng": element["lon"],
                         "status": "available",
-                        "station": element.get("tags", {}).get("name", "Station")
+                        "station": element.get("tags", {}).get("name", "Station"),
+                        "capacity": 2,
+                        "ambulance_type": "BLS",
+                        "assigned_incident": ""
                     })
                 
                 # If no stations found, generate simulated ambulances
@@ -509,15 +541,17 @@ class OpenStreetMapDataSource(DataSource):
                             "id": f"AMB-{1001+i}",
                             "lat": lat + random.uniform(-0.01, 0.01),
                             "lng": lng + random.uniform(-0.01, 0.01),
-                            "status": "available"
+                            "status": "available",
+                            "capacity": 2,
+                            "ambulance_type": "BLS",
+                            "assigned_incident": ""
                         })
                 
                 print(f"[OSM] Found/generated {len(ambulances)} ambulance units")
                 return ambulances
                 
             except Exception as e:
-                print(f"[OSM] Error querying stations from {url}: {e}")
-                continue
+                print(f"[OSM] Error querying stations: {e}")
         
         # All URLs failed — generate simulated ambulances
         import random
@@ -527,7 +561,10 @@ class OpenStreetMapDataSource(DataSource):
                 "id": f"AMB-{1001+i}",
                 "lat": lat + random.uniform(-0.01, 0.01),
                 "lng": lng + random.uniform(-0.01, 0.01),
-                "status": "available"
+                "status": "available",
+                "capacity": 2,
+                "ambulance_type": "BLS",
+                "assigned_incident": ""
             })
         print(f"[OSM] All Overpass nodes failed for ambulances, using {len(ambulances)} simulated units")
         return ambulances

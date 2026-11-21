@@ -3,11 +3,34 @@ n8n Workflow Setup Script
 Creates all 4 agent workflows via n8n REST API
 """
 
+import os
+import sys
+import logging
 import requests
 import json
 
-N8N_BASE_URL = "http://localhost:5678/api/v1"
-API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI4ZDc2ODY1MS1hZjYzLTQzNDctOWNiOC1lZjA1MTllZWM2NjgiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwiaWF0IjoxNzcwNjY1ODc4LCJleHAiOjE3NzMyMDE2MDB9.k9Vzu_RQGpVKNYhqMhXdxfonmKvmbeyhQdzJbhAyFcU"
+# ============================================
+# CONFIGURATION (from environment)
+# ============================================
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logger = logging.getLogger(__name__)
+
+# Load .env file if python-dotenv is available
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass  # python-dotenv is optional; env vars can be set directly
+
+N8N_BASE_URL = os.getenv("N8N_BASE_URL", "http://localhost:5678/api/v1")
+API_KEY = os.getenv("N8N_API_KEY")
+
+if not API_KEY:
+    logger.error("N8N_API_KEY environment variable is not set.")
+    logger.error("Set it in your .env file or export it: export N8N_API_KEY='your_key_here'")
+    logger.error("See .env.example for reference.")
+    sys.exit(1)
 
 headers = {
     "X-N8N-API-KEY": API_KEY,
@@ -23,10 +46,10 @@ def create_workflow(workflow_data):
     )
     if response.status_code in [200, 201]:
         result = response.json()
-        print(f"[+] Created workflow: {workflow_data['name']} (ID: {result.get('id', 'N/A')})")
+        logger.info(f"Created workflow: {workflow_data['name']} (ID: {result.get('id', 'N/A')})")
         return result
     else:
-        print(f"[-] Failed to create {workflow_data['name']}: {response.text}")
+        logger.error(f"Failed to create {workflow_data['name']}: {response.text}")
         return None
 
 def activate_workflow(workflow_id):
@@ -37,9 +60,9 @@ def activate_workflow(workflow_id):
         json={"active": True}
     )
     if response.status_code == 200:
-        print(f"    [+] Activated workflow ID: {workflow_id}")
+        logger.info(f"Activated workflow ID: {workflow_id}")
     else:
-        print(f"    [-] Failed to activate: {response.text}")
+        logger.error(f"Failed to activate: {response.text}")
 
 # Workflow 1: Disaster Trigger Agent
 disaster_trigger_workflow = {
@@ -358,9 +381,9 @@ return [{ json: response }];
 }
 
 def main():
-    print("=" * 50)
-    print("n8n Multi-Agent Workflow Setup")
-    print("=" * 50)
+    logger.info("=" * 50)
+    logger.info("n8n Multi-Agent Workflow Setup")
+    logger.info("=" * 50)
     
     workflows = [
         disaster_trigger_workflow,
@@ -376,22 +399,18 @@ def main():
         if result:
             created_ids.append(result.get('id'))
     
-    print("\n" + "=" * 50)
-    print("Activating Workflows...")
-    print("=" * 50)
+    logger.info("Activating Workflows...")
     
     for wf_id in created_ids:
         if wf_id:
             activate_workflow(wf_id)
     
-    print("\n" + "=" * 50)
-    print("Setup Complete!")
-    print("=" * 50)
-    print("\nWebhook URLs:")
-    print("  - Disaster Trigger: http://localhost:5678/webhook/disaster-trigger")
-    print("  - Hospital Data:    http://localhost:5678/webhook/hospital-data")
-    print("  - Ambulance Data:   http://localhost:5678/webhook/ambulance-data")
-    print("  - Decision:         http://localhost:5678/webhook/decision")
+    logger.info("Setup Complete!")
+    logger.info("Webhook URLs:")
+    logger.info("  - Disaster Trigger: http://localhost:5678/webhook/disaster-trigger")
+    logger.info("  - Hospital Data:    http://localhost:5678/webhook/hospital-data")
+    logger.info("  - Ambulance Data:   http://localhost:5678/webhook/ambulance-data")
+    logger.info("  - Decision:         http://localhost:5678/webhook/decision")
 
 if __name__ == "__main__":
     main()

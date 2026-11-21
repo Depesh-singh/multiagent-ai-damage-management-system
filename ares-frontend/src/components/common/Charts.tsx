@@ -1,0 +1,506 @@
+import React from 'react';
+
+// ==========================================
+// 1. KPI CARD
+// ==========================================
+export interface KpiCardProps {
+  title: string;
+  value: string | number;
+  change?: string;
+  changeType?: 'increase' | 'decrease' | 'neutral';
+  subtext?: string;
+  icon?: React.ReactNode;
+  iconBg?: string;
+  borderColor?: string;
+  onClick?: () => void;
+}
+
+export const KpiCard: React.FC<KpiCardProps> = ({
+  title,
+  value,
+  change,
+  changeType = 'increase',
+  subtext,
+  icon,
+  iconBg = 'bg-[#172B40]',
+  borderColor = 'border-[#263B50]',
+  onClick,
+}) => {
+  return (
+    <div
+      onClick={onClick}
+      className={`ares-card p-3.5 flex items-center justify-between border ${borderColor} ${
+        onClick ? 'cursor-pointer hover:border-[#354E69]' : ''
+      }`}
+    >
+      <div className="space-y-1 min-w-0">
+        <div className="text-[11px] font-medium text-[#94A3B8] tracking-wide uppercase truncate">
+          {title}
+        </div>
+        <div className="flex items-baseline space-x-2">
+          <span className="text-xl font-bold font-mono text-white tracking-tight">
+            {value}
+          </span>
+          {change && (
+            <span
+              className={`text-[10px] font-mono font-medium flex items-center ${
+                changeType === 'increase'
+                  ? 'text-[#22C55E]'
+                  : changeType === 'decrease'
+                  ? 'text-[#EF4444]'
+                  : 'text-[#94A3B8]'
+              }`}
+            >
+              {change}
+            </span>
+          )}
+        </div>
+        {subtext && (
+          <div className="text-[10px] text-[#64748B] truncate font-mono">
+            {subtext}
+          </div>
+        )}
+      </div>
+
+      {icon && (
+        <div
+          className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 border border-[#263B50]/60 ${iconBg}`}
+        >
+          {icon}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ==========================================
+// 2. DONUT CHART (SVG)
+// ==========================================
+export interface DonutSegment {
+  label: string;
+  value: number;
+  color: string;
+}
+
+export interface DonutChartProps {
+  segments: DonutSegment[];
+  centerValue?: string | number;
+  centerLabel?: string;
+  size?: number;
+  strokeWidth?: number;
+  showLegend?: boolean;
+}
+
+export const DonutChart: React.FC<DonutChartProps> = ({
+  segments,
+  centerValue,
+  centerLabel,
+  size = 140,
+  strokeWidth = 18,
+  showLegend = true,
+}) => {
+  const total = segments.reduce((sum, s) => sum + s.value, 0) || 1;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  let accumulatedAngle = 0;
+
+  return (
+    <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+      <div className="relative shrink-0" style={{ width: size, height: size }}>
+        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="transform -rotate-90">
+          {/* Base background circle */}
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            fill="transparent"
+            stroke="#172B40"
+            strokeWidth={strokeWidth}
+          />
+          {segments.map((seg, i) => {
+            const strokeDasharray = `${(seg.value / total) * circumference} ${circumference}`;
+            const strokeDashoffset = -accumulatedAngle;
+            accumulatedAngle += (seg.value / total) * circumference;
+
+            return (
+              <circle
+                key={i}
+                cx={size / 2}
+                cy={size / 2}
+                r={radius}
+                fill="transparent"
+                stroke={seg.color}
+                strokeWidth={strokeWidth}
+                strokeDasharray={strokeDasharray}
+                strokeDashoffset={strokeDashoffset}
+                strokeLinecap="round"
+                className="transition-all duration-500 ease-out"
+              />
+            );
+          })}
+        </svg>
+
+        {/* Center Text */}
+        {(centerValue !== undefined || centerLabel) && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none select-none">
+            {centerValue !== undefined && (
+              <span className="text-lg font-bold font-mono text-white leading-tight">
+                {centerValue}
+              </span>
+            )}
+            {centerLabel && (
+              <span className="text-[10px] text-[#94A3B8] uppercase tracking-wider">
+                {centerLabel}
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Legend */}
+      {showLegend && (
+        <div className="flex-1 space-y-1.5 text-xs w-full">
+          {segments.map((seg, i) => (
+            <div key={i} className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: seg.color }}></span>
+                <span className="text-[#94A3B8] text-[11px] truncate">{seg.label}</span>
+              </div>
+              <span className="font-mono font-bold text-white text-[11px]">
+                {seg.value} ({Math.round((seg.value / total) * 100)}%)
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ==========================================
+// 3. RADIAL GAUGE (Circular Progress Gauge)
+// ==========================================
+export interface RadialGaugeProps {
+  percentage: number;
+  label: string;
+  sublabel?: string;
+  size?: number;
+  strokeWidth?: number;
+  color?: string;
+}
+
+export const RadialGauge: React.FC<RadialGaugeProps> = ({
+  percentage,
+  label,
+  sublabel,
+  size = 90,
+  strokeWidth = 10,
+  color = '#23B9D6',
+}) => {
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const clamped = Math.min(100, Math.max(0, percentage));
+  const strokeDashoffset = circumference - (clamped / 100) * circumference;
+
+  return (
+    <div className="flex flex-col items-center text-center">
+      <div className="relative shrink-0" style={{ width: size, height: size }}>
+        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="transform -rotate-90">
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            fill="transparent"
+            stroke="#172B40"
+            strokeWidth={strokeWidth}
+          />
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            fill="transparent"
+            stroke={color}
+            strokeWidth={strokeWidth}
+            strokeDasharray={circumference}
+            strokeDashoffset={strokeDashoffset}
+            strokeLinecap="round"
+            className="transition-all duration-700 ease-out"
+          />
+        </svg>
+        <div className="absolute inset-0 flex items-center justify-center font-mono font-bold text-sm text-white">
+          {Math.round(clamped)}%
+        </div>
+      </div>
+      <div className="mt-1.5 text-[11px] font-bold text-white">{label}</div>
+      {sublabel && <div className="text-[10px] text-[#94A3B8] font-mono">{sublabel}</div>}
+    </div>
+  );
+};
+
+// ==========================================
+// 4. SMOOTH SVG LINE CHART
+// ==========================================
+export interface LineChartPoint {
+  x: string;
+  y: number;
+}
+
+export interface LineChartProps {
+  data: LineChartPoint[];
+  color?: string;
+  height?: number;
+  showPoints?: boolean;
+  valueSuffix?: string;
+}
+
+export const LineChart: React.FC<LineChartProps> = ({
+  data,
+  color = '#23B9D6',
+  height = 100,
+  showPoints = true,
+  valueSuffix = '',
+}) => {
+  if (!data || data.length === 0) return null;
+
+  const maxY = Math.max(...data.map((d) => d.y), 1);
+  const minY = Math.min(...data.map((d) => d.y), 0);
+  const range = maxY - minY || 1;
+
+  const width = 400; // virtual SVG width
+  const paddingX = 25;
+  const paddingY = 15;
+  const usableWidth = width - paddingX * 2;
+  const usableHeight = height - paddingY * 2;
+
+  const points = data.map((d, i) => {
+    const x = paddingX + (i / (data.length - 1)) * usableWidth;
+    const y = height - paddingY - ((d.y - minY) / range) * usableHeight;
+    return { x, y, raw: d };
+  });
+
+  const pathD = points.reduce((acc, pt, i) => {
+    return i === 0 ? `M ${pt.x} ${pt.y}` : `${acc} L ${pt.x} ${pt.y}`;
+  }, '');
+
+  const areaD = `${pathD} L ${points[points.length - 1].x} ${height - paddingY} L ${points[0].x} ${height - paddingY} Z`;
+
+  return (
+    <div className="w-full">
+      <div className="relative w-full" style={{ height }}>
+        <svg
+          viewBox={`0 0 ${width} ${height}`}
+          className="w-full h-full overflow-visible"
+          preserveAspectRatio="none"
+        >
+          <defs>
+            <linearGradient id={`gradient-${color}`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={color} stopOpacity="0.3" />
+              <stop offset="100%" stopColor={color} stopOpacity="0.0" />
+            </linearGradient>
+          </defs>
+
+          {/* Area fill */}
+          <path d={areaD} fill={`url(#gradient-${color})`} />
+
+          {/* Stroke path */}
+          <path d={pathD} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" />
+
+          {/* Points */}
+          {showPoints &&
+            points.map((pt, i) => (
+              <circle
+                key={i}
+                cx={pt.x}
+                cy={pt.y}
+                r="3.5"
+                fill="#080F1B"
+                stroke={color}
+                strokeWidth="2"
+              />
+            ))}
+        </svg>
+      </div>
+
+      {/* X-Axis labels */}
+      <div className="flex justify-between items-center text-[9px] font-mono text-[#64748B] mt-1.5 px-2">
+        {data.map((d, i) => (
+          <span key={i}>{d.x}</span>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// ==========================================
+// 5. CLUSTERED BAR CHART (SVG)
+// ==========================================
+export interface BarGroup {
+  label: string;
+  valA: number; // e.g. In Stock
+  valB: number; // e.g. Requested
+}
+
+export interface ClusteredBarChartProps {
+  groups: BarGroup[];
+  labelA?: string;
+  labelB?: string;
+  colorA?: string;
+  colorB?: string;
+  height?: number;
+}
+
+export const ClusteredBarChart: React.FC<ClusteredBarChartProps> = ({
+  groups,
+  labelA = 'In Stock',
+  labelB = 'Requested',
+  colorA = '#23B9D6',
+  colorB = '#3B82F6',
+  height = 140,
+}) => {
+  const maxVal = Math.max(
+    ...groups.map((g) => Math.max(g.valA, g.valB)),
+    10
+  );
+
+  return (
+    <div className="w-full space-y-2">
+      <div className="flex items-center justify-end space-x-4 text-[10px]">
+        <div className="flex items-center space-x-1.5">
+          <span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: colorA }}></span>
+          <span className="text-[#94A3B8]">{labelA}</span>
+        </div>
+        <div className="flex items-center space-x-1.5">
+          <span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: colorB }}></span>
+          <span className="text-[#94A3B8]">{labelB}</span>
+        </div>
+      </div>
+
+      <div className="flex items-end justify-between gap-2 pt-2 border-b border-[#263B50]" style={{ height }}>
+        {groups.map((g, i) => {
+          const hA = (g.valA / maxVal) * (height - 25);
+          const hB = (g.valB / maxVal) * (height - 25);
+
+          return (
+            <div key={i} className="flex-1 flex flex-col items-center gap-1 h-full justify-end">
+              <div className="flex items-end gap-1 w-full justify-center">
+                <div
+                  className="w-3 sm:w-4 rounded-t transition-all duration-500"
+                  style={{ height: `${hA}px`, backgroundColor: colorA }}
+                  title={`${labelA}: ${g.valA}`}
+                ></div>
+                <div
+                  className="w-3 sm:w-4 rounded-t transition-all duration-500"
+                  style={{ height: `${hB}px`, backgroundColor: colorB }}
+                  title={`${labelB}: ${g.valB}`}
+                ></div>
+              </div>
+              <span className="text-[9px] font-mono text-[#94A3B8] truncate max-w-[55px] text-center">
+                {g.label}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+// ==========================================
+// 6. HORIZONTAL PROGRESS BAR
+// ==========================================
+export interface ProgressBarProps {
+  label: string;
+  value: number;
+  total?: number;
+  percentage?: number;
+  color?: string;
+  showPercent?: boolean;
+}
+
+export const ProgressBar: React.FC<ProgressBarProps> = ({
+  label,
+  value,
+  total,
+  percentage,
+  color = '#23B9D6',
+  showPercent = true,
+}) => {
+  const pct =
+    percentage !== undefined
+      ? percentage
+      : total && total > 0
+      ? Math.round((value / total) * 100)
+      : Math.min(100, value);
+
+  return (
+    <div className="space-y-1">
+      <div className="flex justify-between items-center text-xs">
+        <span className="text-[#94A3B8] text-[11px] font-medium">{label}</span>
+        <span className="font-mono text-white text-[11px] font-bold">
+          {total ? `${value} / ${total}` : `${value}`} {showPercent && `(${pct}%)`}
+        </span>
+      </div>
+      <div className="w-full h-2 rounded-full bg-[#172B40] overflow-hidden border border-[#263B50]/60">
+        <div
+          className="h-full rounded-full transition-all duration-500 ease-out"
+          style={{ width: `${Math.min(100, Math.max(0, pct))}%`, backgroundColor: color }}
+        />
+      </div>
+    </div>
+  );
+};
+
+// ==========================================
+// 7. STATUS BADGE
+// ==========================================
+export interface StatusBadgeProps {
+  status: string;
+  variant?: 'critical' | 'warning' | 'safe' | 'info' | 'cyan' | 'neutral';
+  pulse?: boolean;
+}
+
+export const StatusBadge: React.FC<StatusBadgeProps> = ({
+  status,
+  variant,
+  pulse = false,
+}) => {
+  let v = variant;
+  if (!v) {
+    const s = status.toUpperCase();
+    if (s.includes('CRIT') || s.includes('FAIL') || s.includes('REJECT') || s.includes('EMERG')) {
+      v = 'critical';
+    } else if (s.includes('HIGH') || s.includes('WARN') || s.includes('PEND') || s.includes('PROGRESS')) {
+      v = 'warning';
+    } else if (s.includes('SAFE') || s.includes('COMPL') || s.includes('APPROV') || s.includes('ONLINE') || s.includes('RESOLV')) {
+      v = 'safe';
+    } else if (s.includes('INFO') || s.includes('ROUTE') || s.includes('DISPATCH')) {
+      v = 'cyan';
+    } else {
+      v = 'neutral';
+    }
+  }
+
+  const styles = {
+    critical: 'bg-red-950/60 text-[#EF4444] border-red-800/80',
+    warning: 'bg-amber-950/60 text-[#F59E0B] border-amber-800/80',
+    safe: 'bg-emerald-950/60 text-[#22C55E] border-emerald-800/80',
+    cyan: 'bg-[#23B9D6]/15 text-[#23B9D6] border-[#23B9D6]/40',
+    info: 'bg-blue-950/60 text-[#3B82F6] border-blue-800/80',
+    neutral: 'bg-slate-800/60 text-[#94A3B8] border-slate-700/80',
+  }[v];
+
+  return (
+    <span
+      className={`inline-flex items-center space-x-1.5 px-2 py-0.5 rounded text-[10px] font-mono font-bold border tracking-wider uppercase ${styles}`}
+    >
+      {pulse && (
+        <span
+          className={`w-1.5 h-1.5 rounded-full inline-block ${
+            v === 'critical' ? 'bg-[#EF4444] pulse-critical' : 'bg-[#23B9D6] pulse-live'
+          }`}
+        />
+      )}
+      <span>{status}</span>
+    </span>
+  );
+};

@@ -583,7 +583,8 @@ def _haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
     dlat = rlat2 - rlat1
     dlng = rlng2 - rlng1
     a = math.sin(dlat / 2) ** 2 + math.cos(rlat1) * math.cos(rlat2) * math.sin(dlng / 2) ** 2
-    return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    a = min(1.0, max(0.0, a))
+    return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1.0 - a))
 
 
 def get_emergency_contacts(disaster_type: str, lat: float, lng: float) -> Dict:
@@ -781,8 +782,9 @@ def get_nearest_fire_stations(lat: float, lng: float, limit: int = 5) -> List[Di
     offsets = [(0.008, 0.012), (-0.015, 0.018), (0.021, -0.010), (-0.011, -0.022), (0.028, 0.015)]
     stations = []
     for i, name in enumerate(names[:limit]):
-        fs_lat = round(lat + offsets[i][0], 5)
-        fs_lng = round(lng + offsets[i][1], 5)
+        offset = offsets[i % len(offsets)]
+        fs_lat = round(lat + offset[0], 5)
+        fs_lng = round(lng + offset[1], 5)
         d_km = round(_haversine_km(lat, lng, fs_lat, fs_lng), 2)
         stations.append({
             "name": name,
@@ -817,8 +819,9 @@ def get_nearest_police_stations(lat: float, lng: float, limit: int = 5) -> List[
     offsets = [(0.006, 0.009), (-0.012, 0.014), (0.018, -0.008), (-0.009, -0.018), (0.024, 0.012)]
     stations = []
     for i, name in enumerate(names[:limit]):
-        ps_lat = round(lat + offsets[i][0], 5)
-        ps_lng = round(lng + offsets[i][1], 5)
+        offset = offsets[i % len(offsets)]
+        ps_lat = round(lat + offset[0], 5)
+        ps_lng = round(lng + offset[1], 5)
         d_km = round(_haversine_km(lat, lng, ps_lat, ps_lng), 2)
         stations.append({
             "name": name,

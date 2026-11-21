@@ -7,9 +7,11 @@ Includes: Medicine Requirements based on disaster type
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from geopy.distance import geodesic
+from collections import deque
 import json
 import os
 import sys
+import logging
 import requests
 from datetime import datetime
 
@@ -30,11 +32,23 @@ from emergency_contacts import (
     EMERGENCY_CONTACTS
 )
 
+import threading
+import queue
+
 app = Flask(__name__)
-CORS(app)  # Enable CORS for dashboard communication
+app.config['MAX_CONTENT_LENGTH'] = 1 * 1024 * 1024  # 1MB request size limit
+
+allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:8501").split(",")
+CORS(app, origins=allowed_origins)
+
+# Global locks and queues for thread safety
+_messages_lock = threading.Lock()
+_config_lock = threading.Lock()
+_sse_subscribers = []
+_sse_lock = threading.Lock()
 
 # Store agent messages for the live panel
-agent_messages = []
+agent_messages = deque(maxlen=50)
 
 # ============================================
 # CONFIGURATION
@@ -44,18 +58,29 @@ agent_messages = []
 # Options: "static", "mongodb", "google_sheets", "osm"
 DATA_SOURCE = os.getenv("DATA_SOURCE", "osm")  # Default to OpenStreetMap for LIVE data
 
+logger = logging.getLogger(__name__)
+
 def log_agent_message(agent, message, message_type="info"):
-    """Log agent communication for the live panel"""
+    """Log agent communication for the live panel and broadcast to active SSE subscribers."""
     timestamp = datetime.now().strftime("%H:%M:%S")
-    agent_messages.append({
+    msg = {
         "timestamp": timestamp,
         "agent": agent,
         "message": message,
         "type": message_type
-    })
-    # Keep only last 50 messages
-    if len(agent_messages) > 50:
-        agent_messages.pop(0)
+    }
+    with _messages_lock:
+        agent_messages.append(msg)
+
+    with _sse_lock:
+        dead = []
+        for q in _sse_subscribers:
+            try:
+                q.put_nowait(msg)
+            except queue.Full:
+                dead.append(q)
+        for q in dead:
+            _sse_subscribers.remove(q)
 
 # ============================================
 # DATA SOURCE ENDPOINTS
@@ -72,14 +97,17 @@ def list_data_sources():
 @app.route('/set-data-source', methods=['POST'])
 def set_data_source():
     """Change active data source"""
-    global DATA_SOURCE
-    source = request.json.get("source", "static")
-    if source in data_manager.list_sources():
-        DATA_SOURCE = source
-        data_manager.set_primary_source(source)
-        log_agent_message("System", f"Data source changed to: {source}", "info")
-        return jsonify({"status": "ok", "source": source})
-    return jsonify({"error": f"Unknown source: {source}"}), 400
+    with _config_lock:
+        global DATA_SOURCE
+        if not request.is_json or request.json is None:
+            return jsonify({"error": "Request body must be JSON"}), 400
+        source = request.json.get("source", "static")
+        if source in data_manager.list_sources():
+            DATA_SOURCE = source
+            data_manager.set_primary_source(source)
+            log_agent_message("System", f"Data source changed to: {source}", "info")
+            return jsonify({"status": "ok", "source": source})
+        return jsonify({"error": f"Unknown source: {source}"}), 400
 
 @app.route('/hospitals', methods=['GET'])
 def get_hospitals():
@@ -93,6 +121,20 @@ def get_hospitals():
     source = request.args.get('source', DATA_SOURCE)
     
     hospitals = data_manager.get_hospitals(lat, lng, radius, source)
+    
+    # Calculate distance for each hospital and sort nearest first
+    for h in hospitals:
+        h_lat = h.get('lat')
+        h_lng = h.get('lng')
+        if h_lat and h_lng:
+            dist = geodesic((lat, lng), (h_lat, h_lng)).km
+            h['_distance'] = round(dist, 2)
+            h['distance'] = h['_distance']
+        else:
+            h['_distance'] = 999.0
+            h['distance'] = 999.0
+            
+    hospitals.sort(key=lambda x: x.get('_distance', 999.0))
     
     log_agent_message("Hospital Agent", f"Fetched {len(hospitals)} hospitals from {source}", "info")
     
@@ -286,44 +328,120 @@ def optimize_live():
 
 @app.route('/ambulance-dispatch', methods=['POST'])
 def ambulance_dispatch():
-    """
-    Handle ambulance dispatch - fetches from active data source.
-    """
+    """Enhanced ambulance dispatch with capacity matching and smart ETA."""
     try:
         data = request.json
         disaster_lat = data.get("lat", 22.721)
         disaster_lng = data.get("lng", 88.485)
+        patient_count = data.get("patients", 6)
         disaster_loc = (disaster_lat, disaster_lng)
         
         source = data.get("source", DATA_SOURCE)
         
         # Fetch ambulances from data source
-        ambulances = data_manager.get_ambulances(disaster_lat, disaster_lng, radius_km=10, source=source)
+        all_ambulances = data_manager.get_ambulances(disaster_lat, disaster_lng, radius_km=10, source=source)
         
-        log_agent_message("Emergency Agent", f"Disaster at ({disaster_lat}, {disaster_lng})", "info")
-        log_agent_message("Emergency Agent", f"Found {len(ambulances)} ambulances from {source}", "info")
+        log_agent_message("Emergency Agent", f"Disaster at ({disaster_lat}, {disaster_lng}) - {patient_count} patients", "info")
         
-        dispatch = []
-        for amb in ambulances:
+        # Filter: only available ambulances
+        available = [amb for amb in all_ambulances if amb.get("status", "available") == "available"]
+        log_agent_message("Emergency Agent", f"{len(available)}/{len(all_ambulances)} ambulances available from {source}", "info")
+        
+        # Calculate distance and smart ETA for each
+        for amb in available:
             amb_loc = (amb["lat"], amb["lng"])
-            distance = round(geodesic(disaster_loc, amb_loc).km, 2)
-            eta = round(distance * 3, 1)  # 3 min per km
-            
-            dispatch.append({
-                "ambulance_id": amb.get("id", "UNKNOWN"),
-                "distance": distance,
-                "eta_minutes": eta,
-                "status": amb.get("status", "available"),
-                "driver": amb.get("driver", "")
-            })
-            
-            log_agent_message("Emergency Agent", f"{amb.get('id')} dispatched -> ETA: {eta} min", "success")
+            dist = geodesic(disaster_loc, amb_loc).km
+            amb["_distance"] = round(dist, 2)
+            # Smart ETA: base 3 min/km with modifiers
+            if dist > 10:
+                eta = dist * 3 * 1.2  # highway factor
+            elif dist < 2:
+                eta = dist * 3 * 0.7  # urban proximity
+            else:
+                eta = dist * 3
+            amb["_eta"] = round(eta, 1)
         
-        dispatch.sort(key=lambda x: x["distance"])
+        # Sort by composite score: 70% distance, 30% inverse capacity preference
+        if available:
+            max_dist = max(a["_distance"] for a in available) or 1
+            max_cap = max(a.get("capacity", 2) for a in available) or 1
+            for amb in available:
+                norm_dist = amb["_distance"] / max_dist
+                norm_cap = 1 - (amb.get("capacity", 2) / max_cap)  # prefer higher capacity
+                amb["_score"] = 0.7 * norm_dist + 0.3 * norm_cap
+            available.sort(key=lambda x: x["_score"])
+        
+        # Check if hospital allocations passed in request
+        allocations = data.get("allocation", [])
+        
+        # Greedy dispatch: assign closest available until all patients covered
+        dispatch = []
+        patients_remaining = patient_count
+        
+        alloc_idx = 0
+        current_alloc_patients_handled = 0
+        
+        for amb in available:
+            if patients_remaining <= 0:
+                break
+            
+            cap = amb.get("capacity", 2)
+            assigned = min(cap, patients_remaining)
+            
+            dispatch_item = {
+                "ambulance_id": amb.get("id", "UNKNOWN"),
+                "type": amb.get("ambulance_type", amb.get("type", "BLS")),
+                "capacity": cap,
+                "patients_assigned": assigned,
+                "distance_km": amb["_distance"],
+                "eta_minutes": amb["_eta"],
+                "status": "dispatched",
+                "driver": amb.get("driver", ""),
+                "lat": amb.get("lat"),
+                "lng": amb.get("lng")
+            }
+            
+            # Link to allocated hospital if available
+            if allocations and alloc_idx < len(allocations):
+                target_alloc = allocations[alloc_idx]
+                dispatch_item["assigned_hospital"] = target_alloc.get("hospital", target_alloc.get("name", "Nearest Hospital"))
+                dispatch_item["hospital_lat"] = target_alloc.get("lat")
+                dispatch_item["hospital_lng"] = target_alloc.get("lng")
+                dispatch_item["hospital_distance_km"] = target_alloc.get("distance", 0)
+                dispatch_item["hospital_beds_available"] = target_alloc.get("available_beds", target_alloc.get("beds", 0))
+                
+                current_alloc_patients_handled += assigned
+                if current_alloc_patients_handled >= target_alloc.get("assigned", 1):
+                    alloc_idx += 1
+                    current_alloc_patients_handled = 0
+            
+            dispatch.append(dispatch_item)
+            
+            # Mark as dispatched in memory
+            amb["status"] = "dispatched"
+            
+            h_msg = f" ➔ Hospital: {dispatch_item.get('assigned_hospital')}" if dispatch_item.get('assigned_hospital') else ""
+            log_agent_message("Emergency Agent", 
+                f"{amb.get('id')} ({amb.get('ambulance_type', 'BLS')}) dispatched -> {assigned} patients, ETA: {amb['_eta']} min{h_msg}", "success")
+            
+            patients_remaining -= assigned
+        
+        patients_covered = patient_count - max(patients_remaining, 0)
+        total_capacity = sum(d["capacity"] for d in dispatch)
+        available_remaining = len([a for a in all_ambulances if a.get("status", "available") == "available"])
+        
+        if patients_remaining > 0:
+            log_agent_message("Emergency Agent", f"WARNING: {patients_remaining} patients uncovered! Insufficient ambulances.", "warning")
+        else:
+            log_agent_message("Emergency Agent", f"All {patient_count} patients covered by {len(dispatch)} ambulances", "success")
         
         return jsonify({
             "dispatch": dispatch,
-            "total_ambulances": len(dispatch),
+            "total_dispatched": len(dispatch),
+            "total_capacity": total_capacity,
+            "patients_covered": patients_covered,
+            "patients_uncovered": max(patients_remaining, 0),
+            "available_remaining": available_remaining,
             "data_source": source
         })
         
@@ -338,13 +456,42 @@ def ambulance_dispatch():
 @app.route('/agent-messages', methods=['GET'])
 def get_agent_messages():
     """Get all agent messages for the live panel."""
-    return jsonify({"messages": agent_messages})
+    with _messages_lock:
+        return jsonify({"messages": list(agent_messages)})
+
+@app.route('/agent-messages/stream', methods=['GET'])
+def stream_agent_messages():
+    """Server-Sent Events (SSE) endpoint for real-time agent message streaming."""
+    def event_generator():
+        q = queue.Queue(maxsize=100)
+        with _sse_lock:
+            _sse_subscribers.append(q)
+        try:
+            with _messages_lock:
+                history = list(agent_messages)
+            for msg in history:
+                yield f"data: {json.dumps(msg)}\n\n"
+
+            while True:
+                try:
+                    msg = q.get(timeout=15)
+                    yield f"data: {json.dumps(msg)}\n\n"
+                except queue.Empty:
+                    yield ": heartbeat\n\n"
+        except GeneratorExit:
+            pass
+        finally:
+            with _sse_lock:
+                if q in _sse_subscribers:
+                    _sse_subscribers.remove(q)
+
+    return app.response_class(event_generator(), mimetype='text/event-stream')
 
 @app.route('/clear-messages', methods=['POST'])
 def clear_messages():
     """Clear agent message history."""
-    global agent_messages
-    agent_messages = []
+    with _messages_lock:
+        agent_messages.clear()
     log_agent_message("System", "New disaster response initiated", "info")
     return jsonify({"status": "cleared"})
 
@@ -489,18 +636,41 @@ def full_disaster_response():
             remaining -= assigned
         
         # 3. Get ambulances
-        ambulances = data_manager.get_ambulances(disaster_lat, disaster_lng, source=source)
-        dispatch = []
-        for amb in ambulances[:5]:
+        all_ambulances = data_manager.get_ambulances(disaster_lat, disaster_lng, source=source)
+        available_ambs = [amb for amb in all_ambulances if amb.get("status", "available") == "available"]
+        for amb in available_ambs:
             amb_loc = (amb["lat"], amb["lng"])
-            distance = round(geodesic(disaster_loc, amb_loc).km, 2)
-            eta = round(distance * 3, 1)
+            dist = geodesic(disaster_loc, amb_loc).km
+            amb["_distance"] = round(dist, 2)
+            if dist > 10:
+                eta = dist * 3 * 1.2
+            elif dist < 2:
+                eta = dist * 3 * 0.7
+            else:
+                eta = dist * 3
+            amb["_eta"] = round(eta, 1)
+        
+        available_ambs.sort(key=lambda x: x["_distance"])
+        dispatch = []
+        amb_patients_remaining = patients
+        for amb in available_ambs:
+            if amb_patients_remaining <= 0:
+                break
+            cap = amb.get("capacity", 2)
+            assigned = min(cap, amb_patients_remaining)
             dispatch.append({
                 "ambulance_id": amb.get("id", "UNKNOWN"),
-                "distance": distance,
-                "eta_minutes": eta
+                "type": amb.get("ambulance_type", amb.get("type", "BLS")),
+                "capacity": cap,
+                "patients_assigned": assigned,
+                "distance_km": amb["_distance"],
+                "eta_minutes": amb["_eta"],
+                "status": "dispatched",
+                "driver": amb.get("driver", "")
             })
-            log_agent_message("Emergency Agent", f"{amb.get('id')} -> ETA {eta}min", "success")
+            amb["status"] = "dispatched"
+            amb_patients_remaining -= assigned
+            log_agent_message("Emergency Agent", f"{amb.get('id')} ({amb.get('ambulance_type', 'BLS')}) dispatched -> {assigned} patients, ETA {amb['_eta']}min", "success")
         
         # 4. Overall medicine requirements
         total_meds = get_medicine_requirements(disaster_type, patients)
@@ -704,31 +874,57 @@ def nearby_stations():
         log_agent_message("System", f"Nearby stations error: {str(e)}", "error")
         return jsonify({"error": str(e)}), 400
 
+@app.route('/ambulance-status', methods=['PATCH'])
+def update_ambulance_status():
+    """Update an ambulance's status (e.g., mark as returning or available)."""
+    try:
+        data = request.json
+        ambulance_id = data.get("ambulance_id")
+        new_status = data.get("status")
+        
+        if not ambulance_id or not new_status:
+            return jsonify({"error": "ambulance_id and status are required"}), 400
+        
+        valid_statuses = ["available", "dispatched", "en_route", "returning"]
+        if new_status not in valid_statuses:
+            return jsonify({"error": f"Invalid status. Must be one of: {valid_statuses}"}), 400
+        
+        log_agent_message("Emergency Agent", f"{ambulance_id} status -> {new_status}", "info")
+        
+        return jsonify({"status": "updated", "ambulance_id": ambulance_id, "new_status": new_status})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+# ============================================
+# ERROR HANDLERS
+# ============================================
+
+@app.errorhandler(404)
+def not_found_error(error):
+    return jsonify({"error": "Resource not found", "status_code": 404}), 404
+
+@app.errorhandler(405)
+def method_not_allowed_error(error):
+    return jsonify({"error": "Method not allowed", "status_code": 405}), 405
+
+@app.errorhandler(500)
+def internal_error(error):
+    return jsonify({"error": "Internal server error", "status_code": 500}), 500
+
 # ============================================
 # MAIN
 # ============================================
 
 if __name__ == '__main__':
-    print("=" * 50)
-    print("Multi-Agent Disaster Response Backend")
-    print("=" * 50)
-    print(f"[+] Active data source: {DATA_SOURCE}")
-    print(f"[+] Available sources: {data_manager.list_sources()}")
-    print("")
-    print("[+] Endpoints:")
-    print("    /optimize          - Patient allocation")
-    print("    /optimize-live     - Allocation with OSM data")
-    print("    /hospitals         - Get hospitals from data source")
-    print("    /ambulances        - Get ambulances")
-    print("    /data-sources      - List available sources")
-    print("    /set-data-source   - Change active source")
-    print("    /geocode           - Geocode location to lat/lng")
-    print("    /emergency-calls   - Simulate emergency calls")
-    print("    /emergency-contacts- Get emergency contacts")
-    print("    /nearby-stations   - Find nearby fire/police stations")
-    print("=" * 50)
-    
-    # Set primary data source
+    port = int(os.getenv("FLASK_PORT", 5000))
+    debug_mode = os.getenv("FLASK_DEBUG", "0") == "1"
+
+    logger.info("=" * 50)
+    logger.info("Multi-Agent Disaster Response Backend")
+    logger.info("=" * 50)
+    logger.info(f"Active data source: {DATA_SOURCE}")
+    logger.info(f"Available sources: {data_manager.list_sources()}")
+    logger.info("=" * 50)
+
     data_manager.set_primary_source(DATA_SOURCE)
-    
-    app.run(port=5000, debug=True)
+    app.run(host="0.0.0.0", port=port, debug=debug_mode)

@@ -3,11 +3,34 @@ Update n8n Workflows for LIVE DATA
 Updates existing workflows to fetch data from Python backend instead of static data
 """
 
+import os
+import sys
+import logging
 import requests
 import json
 
-N8N_BASE_URL = "http://localhost:5678/api/v1"
-API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI4ZDc2ODY1MS1hZjYzLTQzNDctOWNiOC1lZjA1MTllZWM2NjgiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwiaWF0IjoxNzcwNjY1ODc4LCJleHAiOjE3NzMyMDE2MDB9.k9Vzu_RQGpVKNYhqMhXdxfonmKvmbeyhQdzJbhAyFcU"
+# ============================================
+# CONFIGURATION (from environment)
+# ============================================
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logger = logging.getLogger(__name__)
+
+# Load .env file if python-dotenv is available
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass  # python-dotenv is optional; env vars can be set directly
+
+N8N_BASE_URL = os.getenv("N8N_BASE_URL", "http://localhost:5678/api/v1")
+API_KEY = os.getenv("N8N_API_KEY")
+
+if not API_KEY:
+    logger.error("N8N_API_KEY environment variable is not set.")
+    logger.error("Set it in your .env file or export it: export N8N_API_KEY='your_key_here'")
+    logger.error("See .env.example for reference.")
+    sys.exit(1)
 
 headers = {
     "X-N8N-API-KEY": API_KEY,
@@ -22,13 +45,13 @@ def delete_workflow(workflow_id):
             headers=headers
         )
         if response.status_code in [200, 204]:
-            print(f"[+] Deleted workflow: {workflow_id}")
+            logger.info(f"Deleted workflow: {workflow_id}")
             return True
         else:
-            print(f"[-] Failed to delete {workflow_id}: {response.text}")
+            logger.error(f"Failed to delete {workflow_id}: {response.text}")
             return False
     except Exception as e:
-        print(f"[-] Error: {e}")
+        logger.error(f"Error: {e}")
         return False
 
 def create_workflow(workflow_data):
@@ -40,10 +63,10 @@ def create_workflow(workflow_data):
     )
     if response.status_code in [200, 201]:
         result = response.json()
-        print(f"[+] Created workflow: {workflow_data['name']} (ID: {result.get('id', 'N/A')})")
+        logger.info(f"Created workflow: {workflow_data['name']} (ID: {result.get('id', 'N/A')})")
         return result
     else:
-        print(f"[-] Failed: {response.text}")
+        logger.error(f"Failed: {response.text}")
         return None
 
 # ============================================
@@ -355,9 +378,9 @@ medicine_alert_agent = {
 }
 
 def main():
-    print("=" * 60)
-    print("Updating n8n Workflows for LIVE DATA")
-    print("=" * 60)
+    logger.info("=" * 60)
+    logger.info("Updating n8n Workflows for LIVE DATA")
+    logger.info("=" * 60)
     
     # Get existing workflow IDs
     response = requests.get(f"{N8N_BASE_URL}/workflows", headers=headers)
@@ -367,7 +390,7 @@ def main():
     old_names = ["Disaster Trigger Agent", "Hospital Agent", "Emergency Agent"]
     for wf in existing:
         if wf["name"] in old_names:
-            print(f"[!] Deleting old workflow: {wf['name']}")
+            logger.warning(f"Deleting old workflow: {wf['name']}")
             delete_workflow(wf["id"])
     
     # Create new LIVE workflows
@@ -384,16 +407,13 @@ def main():
         if result:
             created_ids.append(result.get("id"))
     
-    print("\n" + "=" * 60)
-    print("LIVE Workflows Created!")
-    print("=" * 60)
-    print("\nWebhook URLs:")
-    print("  - Full Response:    http://localhost:5678/webhook/disaster-trigger")
-    print("  - Hospital (LIVE):  http://localhost:5678/webhook/hospital-data")
-    print("  - Ambulance (LIVE): http://localhost:5678/webhook/ambulance-data")
-    print("  - Medicine Alert:   http://localhost:5678/webhook/medicine-alert")
-    print("\nNOTE: Activate workflows in n8n UI (toggle ON)")
-    print("=" * 60)
+    logger.info("LIVE Workflows Created!")
+    logger.info("Webhook URLs:")
+    logger.info("  - Full Response:    http://localhost:5678/webhook/disaster-trigger")
+    logger.info("  - Hospital (LIVE):  http://localhost:5678/webhook/hospital-data")
+    logger.info("  - Ambulance (LIVE): http://localhost:5678/webhook/ambulance-data")
+    logger.info("  - Medicine Alert:   http://localhost:5678/webhook/medicine-alert")
+    logger.info("NOTE: Activate workflows in n8n UI (toggle ON)")
 
 if __name__ == "__main__":
     main()

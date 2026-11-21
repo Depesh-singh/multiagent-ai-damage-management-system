@@ -1,0 +1,132 @@
+@import 'leaflet/dist/leaflet.css';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-primary: #080F1B;
+  --bg-sidebar: #101C2B;
+  --bg-panel: #132438;
+  --bg-panel-elevated: #172B40;
+  --border-color: #263B50;
+  --color-cyan: #23B9D6;
+  --color-red: #EF4444;
+  --color-amber: #F59E0B;
+  --color-green: #22C55E;
+  --text-primary: #F1F5F9;
+  --text-secondary: #94A3B8;
+  --text-muted: #64748B;
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: #080F1B;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #263B50;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #23B9D6;
+}
+
+/* Tactical Panel Styles matching 13 Reference Images */
+.ares-card {
+  background-color: #132438;
+  border: 1px solid #263B50;
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.45);
+}
+
+.ares-card-elevated {
+  background-color: #172B40;
+  border: 1px solid #263B50;
+  border-radius: 0.5rem;
+}
+
+.ares-card-hover {
+  transition: all 0.15s ease-in-out;
+}
+
+.ares-card-hover:hover {
+  border-color: #354E69;
+  background-color: #172B40;
+}
+
+/* Active navigation pill matching reference screenshots */
+.nav-item-active {
+  background: linear-gradient(90deg, rgba(35, 185, 214, 0.25) 0%, rgba(35, 185, 214, 0.1) 100%);
+  border-left: 3px solid #23B9D6;
+  color: #FFFFFF !important;
+  font-weight: 600;
+}
+
+/* Leaflet Dark Matter Styling */
+.leaflet-container {
+  background-color: #080F1B !important;
+  font-family: inherit !important;
+}
+
+.leaflet-tile-pane {
+  z-index: 200 !important;
+}
+
+.leaflet-tile {
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* Tactical Dark Filter for OpenStreetMap tiles */
+.tactical-dark-tile {
+  filter: invert(100%) hue-rotate(180deg) brightness(85%) contrast(90%) !important;
+}
+
+.leaflet-popup-content-wrapper {
+  background: #132438 !important;
+  color: #F1F5F9 !important;
+  border: 1px solid #263B50 !important;
+  border-radius: 8px !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6) !important;
+}
+
+.leaflet-popup-tip {
+  background: #132438 !important;
+}
+
+.leaflet-container a {
+  color: #23B9D6 !important;
+}
+
+/* Pulsing Badge Animations */
+@keyframes pulse-cyan {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(1.12); }
+}
+
+@keyframes pulse-red {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(1.15); }
+}
+
+.pulse-live {
+  animation: pulse-cyan 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.pulse-critical {
+  animation: pulse-red 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}

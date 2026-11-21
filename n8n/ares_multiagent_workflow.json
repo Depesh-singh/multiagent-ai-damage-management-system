@@ -1,0 +1,335 @@
+[
+  {
+    "id": "aresMagent202601",
+    "name": "ARES \u2014 Multi-Agent Autonomous Emergency System",
+    "nodes": [
+      {
+        "id": "node-webhook",
+        "name": "\u26a1 Disaster SOS Webhook",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          -320,
+          200
+        ],
+        "webhookId": "ares-emergency-sos",
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "ares-emergency",
+          "responseMode": "responseNode",
+          "options": {}
+        }
+      },
+      {
+        "id": "node-manual",
+        "name": "\u25b6 Simulate Crisis (1-Click Test)",
+        "type": "n8n-nodes-base.manualTrigger",
+        "typeVersion": 1,
+        "position": [
+          -320,
+          380
+        ],
+        "parameters": {}
+      },
+      {
+        "id": "node-agent1",
+        "name": "Agent 1: SOS Ingestion & Normalizer",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          0,
+          280
+        ],
+        "parameters": {
+          "jsCode": "// Agent 1: SOS Ingestion & Schema Normalizer\nconst input = $input.first()?.json || {};\nconst body = input.body || input;\n\nconst incident = {\n  tracking_id: \"ARES-\" + Math.floor(100000 + Math.random() * 900000),\n  disaster_type: body.disaster_type || \"EARTHQUAKE\",\n  latitude: body.latitude !== undefined ? Number(body.latitude) : 22.5550,\n  longitude: body.longitude !== undefined ? Number(body.longitude) : 88.3510,\n  location_name: body.location_name || \"Park Street & Esplanade, Central Kolkata\",\n  casualty_estimate: body.casualty_estimate !== undefined ? Number(body.casualty_estimate) : 45,\n  severity_level: body.severity_level || 4,\n  description: body.description || \"Severe seismic tremor (M6.7) causing structural collapse of commercial complex, trapped victims, and road blockage.\",\n  ingested_at: new Date().toISOString(),\n  reporter_source: body.reporter_source || \"CITIZEN_SOS_&_SEISMIC_TELEMETRY\"\n};\n\nreturn [{\n  json: {\n    status: \"INGESTED\",\n    agent: \"Agent 1: Ingestion & Normalizer\",\n    incident: incident\n  }\n}];"
+        }
+      },
+      {
+        "id": "node-agent2",
+        "name": "Agent 2: Verification & Threat Assessment",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          320,
+          280
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "http://host.docker.internal:5000/api/v1/incidents/",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({\n  location_lat: $('Agent 1: SOS Ingestion & Normalizer').first().json.incident.latitude,\n  location_lng: $('Agent 1: SOS Ingestion & Normalizer').first().json.incident.longitude,\n  address: $('Agent 1: SOS Ingestion & Normalizer').first().json.incident.location_name,\n  disaster_type: $('Agent 1: SOS Ingestion & Normalizer').first().json.incident.disaster_type,\n  casualty_estimate: $('Agent 1: SOS Ingestion & Normalizer').first().json.incident.casualty_estimate,\n  description: $('Agent 1: SOS Ingestion & Normalizer').first().json.incident.description,\n  source: 'ARES_N8N_MULTIAGENT'\n}) }}",
+          "options": {}
+        }
+      },
+      {
+        "id": "node-agent3",
+        "name": "Agent 3: GIS Hazard Zone Mapping",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          640,
+          280
+        ],
+        "parameters": {
+          "jsCode": "// Agent 3: GIS Hazard Zone & Impact Radius Engine\nconst incidentData = $('Agent 1: SOS Ingestion & Normalizer').first().json.incident;\nconst verifiedIncident = $input.first().json;\n\nconst baseRadius = incidentData.disaster_type === 'EARTHQUAKE' ? 2.5 : 1.5;\nconst casualties = incidentData.casualty_estimate;\n\nconst zones = {\n  red_zone: {\n    name: \"Red Zone (Hot / Ground Zero)\",\n    radius_km: baseRadius,\n    epicenter: { lat: incidentData.latitude, lng: incidentData.longitude },\n    threat_level: \"CRITICAL_COLLAPSE_RISK\",\n    action: \"MANDATORY_EVACUATION\",\n    estimated_affected_pop: casualties * 18,\n    structural_damage: \"SEVERE_TO_CATASTROPHIC\",\n    perimeter_cordon_required: true\n  },\n  amber_zone: {\n    name: \"Amber Zone (Warm / Secondary Hazards)\",\n    radius_km: Number((baseRadius * 2.6).toFixed(1)),\n    threat_level: \"HIGH_AFTERSHOCK_&_FIRE_RISK\",\n    action: \"SHELTER_IN_PLACE_&_TRIAGE_POST\",\n    estimated_affected_pop: casualties * 55,\n    structural_damage: \"MODERATE\",\n    perimeter_cordon_required: false\n  },\n  green_zone: {\n    name: \"Green Zone (Cold / Logistics Base)\",\n    radius_km: Number((baseRadius * 6.0).toFixed(1)),\n    threat_level: \"SAFE_OPERATIONAL_PERIMETER\",\n    action: \"FIELD_HOSPITALS_&_STAGING_DEPOTS\",\n    estimated_affected_pop: 0,\n    structural_damage: \"LOW_TO_NONE\",\n    helicopter_landing_zones: 3\n  }\n};\n\nreturn [{\n  json: {\n    incident_id: verifiedIncident.id || incidentData.tracking_id,\n    incident: incidentData,\n    verified_incident: verifiedIncident,\n    hazard_zones: zones,\n    gis_timestamp: new Date().toISOString()\n  }\n}];"
+        }
+      },
+      {
+        "id": "node-agent4",
+        "name": "Agent 4: Hospital Capacity & ICU Triage",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          960,
+          280
+        ],
+        "parameters": {
+          "method": "GET",
+          "url": "=http://host.docker.internal:5000/api/v1/hospitals/nearby?lat={{ $('Agent 1: SOS Ingestion & Normalizer').first().json.incident.latitude }}&lng={{ $('Agent 1: SOS Ingestion & Normalizer').first().json.incident.longitude }}&radius_km=25",
+          "options": {}
+        }
+      },
+      {
+        "id": "node-agent5",
+        "name": "Agent 5: Ambulance Fleet Dispatcher",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1280,
+          280
+        ],
+        "parameters": {
+          "method": "GET",
+          "url": "http://host.docker.internal:5000/api/v1/ambulances/?status=AVAILABLE",
+          "options": {}
+        }
+      },
+      {
+        "id": "node-agent6",
+        "name": "Agent 6: NDRF & SDRF Rescue Tasking",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1600,
+          280
+        ],
+        "parameters": {
+          "method": "GET",
+          "url": "http://host.docker.internal:5000/api/v1/rescue/teams",
+          "options": {}
+        }
+      },
+      {
+        "id": "node-agent7",
+        "name": "Agent 7: Blood Bank & Medical Forecasting",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1920,
+          280
+        ],
+        "parameters": {
+          "method": "GET",
+          "url": "=http://host.docker.internal:5000/api/v1/medical/requirements/{{ $('Agent 1: SOS Ingestion & Normalizer').first().json.incident.disaster_type }}?patient_count={{ $('Agent 1: SOS Ingestion & Normalizer').first().json.incident.casualty_estimate }}",
+          "options": {}
+        }
+      },
+      {
+        "id": "node-agent8",
+        "name": "Agent 8: Dynamic Green Corridor & Route Optimizer",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2240,
+          280
+        ],
+        "parameters": {
+          "jsCode": "// Agent 8: Dynamic Green Corridor & Route Optimization Engine\nconst hospitalsRaw = $('Agent 4: Hospital Capacity & ICU Triage').all().map(i => i.json);\nconst ambulancesRaw = $('Agent 5: Ambulance Fleet Dispatcher').all().map(i => i.json);\nconst incident = $('Agent 1: SOS Ingestion & Normalizer').first().json.incident;\n\nconst hospitalList = Array.isArray(hospitalsRaw[0]) ? hospitalsRaw[0] : hospitalsRaw;\nconst ambulanceList = Array.isArray(ambulancesRaw[0]) ? ambulancesRaw[0] : ambulancesRaw;\n\nconst primaryHospital = hospitalList[0] || { name: \"SSKM Trauma Center\", distance_km: 1.89, travel_minutes: 5 };\nconst secondaryHospital = hospitalList[1] || { name: \"Calcutta National Medical College\", distance_km: 2.11, travel_minutes: 6 };\n\nconst corridors = [\n  {\n    corridor_id: \"GREEN-CORRIDOR-ALPHA\",\n    name: \"Park Street - JL Nehru Rd to SSKM Trauma Center\",\n    distance_km: primaryHospital.distance_km || 1.9,\n    estimated_transit_time_min: 4,\n    traffic_signals_overridden: 6,\n    priority: \"CRITICAL_P1_RED_CASUALTIES\",\n    destination_hospital: primaryHospital.name\n  },\n  {\n    corridor_id: \"GREEN-CORRIDOR-BRAVO\",\n    name: \"AJC Bose Rd Flyover to CNMC Medical Center\",\n    distance_km: secondaryHospital.distance_km || 2.2,\n    estimated_transit_time_min: 5,\n    traffic_signals_overridden: 5,\n    priority: \"URGENT_P2_YELLOW_CASUALTIES\",\n    destination_hospital: secondaryHospital.name\n  }\n];\n\nconst roadClosures = [\n  {\n    road_name: \"Sealdah Flyover Central Segment\",\n    status: \"BLOCKED_STRUCTURAL_CRACKS\",\n    alternate_route: \"Dharmatala Connector -> APC Road\"\n  },\n  {\n    road_name: \"Park Circus 7-Point Crossing Inbound\",\n    status: \"RESTRICTED_EMERGENCY_VEHICLES_ONLY\",\n    alternate_route: \"Darga Road -> Suhrawardy Ave\"\n  }\n];\n\nconst assignedFleet = ambulanceList.slice(0, 6).map((amb, idx) => ({\n  vehicle_number: amb.vehicle_number,\n  ambulance_type: amb.ambulance_type,\n  driver_name: amb.driver_name,\n  driver_phone: amb.driver_phone,\n  assigned_corridor: idx % 2 === 0 ? \"GREEN-CORRIDOR-ALPHA\" : \"GREEN-CORRIDOR-BRAVO\",\n  destination: idx % 2 === 0 ? primaryHospital.name : secondaryHospital.name,\n  eta_minutes: idx * 2 + 3\n}));\n\nreturn [{\n  json: {\n    status: \"OPTIMIZED\",\n    incident_id: incident.tracking_id,\n    green_corridors: corridors,\n    road_closures: roadClosures,\n    assigned_fleet: assignedFleet,\n    primary_hospital: primaryHospital,\n    secondary_hospital: secondaryHospital\n  }\n}];"
+        }
+      },
+      {
+        "id": "node-agent9",
+        "name": "Agent 9: Multi-Agency Telematics Broadcast",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2560,
+          280
+        ],
+        "parameters": {
+          "jsCode": "// Agent 9: Multi-Agency Telematics Broadcast Agent\nconst incident = $('Agent 1: SOS Ingestion & Normalizer').first().json.incident;\nconst routing = $('Agent 8: Dynamic Green Corridor & Route Optimizer').first().json;\nconst rescueRaw = $('Agent 6: NDRF & SDRF Rescue Tasking').all().map(i => i.json);\nconst rescueTeams = Array.isArray(rescueRaw[0]) ? rescueRaw[0] : rescueRaw;\n\nconst broadcasts = [\n  {\n    agency: \"ERSS 112 (National Unified Emergency)\",\n    dispatch_type: \"CAD_INCIDENT_STREAM\",\n    priority: \"FLASH_LEVEL_1\",\n    payload: {\n      cad_id: \"ERSS-WB-2026-\" + Math.floor(1000 + Math.random() * 9000),\n      disaster: incident.disaster_type,\n      location: incident.location_name,\n      coordinates: `${incident.latitude}, ${incident.longitude}`,\n      estimated_casualties: incident.casualty_estimate,\n      initial_triaged_severity: \"CODE_RED_MASS_CASUALTY\"\n    }\n  },\n  {\n    agency: \"Ambulance 108 Emergency Medical Services\",\n    dispatch_type: \"FLEET_DEPLOYMENT_ORDER\",\n    priority: \"IMMEDIATE\",\n    payload: {\n      active_ambulances_assigned: routing.assigned_fleet.length,\n      primary_triage_destination: routing.primary_hospital.name,\n      green_corridors_active: routing.green_corridors.map(c => c.corridor_id)\n    }\n  },\n  {\n    agency: \"Fire & Emergency Services 101 / USAR\",\n    dispatch_type: \"COLLAPSE_RESCUE_TASKING\",\n    priority: \"IMMEDIATE\",\n    payload: {\n      mission: \"HEAVY_COLLAPSED_STRUCTURE_SEARCH_AND_RESCUE\",\n      teams_mobilized: rescueTeams.slice(0, 3).map(t => t.name),\n      hazards: [\"Structural Instability\", \"Ruptured Gas Mains\", \"Live Power Lines\"]\n    }\n  },\n  {\n    agency: \"Kolkata Traffic Police Control 100\",\n    dispatch_type: \"GREEN_CORRIDOR_PREEMPTION\",\n    priority: \"URGENT\",\n    payload: {\n      clearance_order: \"MANUAL_TRAFFIC_LIGHT_OVERRIDE\",\n      active_arteries: routing.green_corridors.map(c => c.name),\n      cordoned_zones: [\"Park Street Crossing\", \"Esplanade Metro Gate 2\", \"AJC Bose Connector\"]\n    }\n  },\n  {\n    agency: \"NDRF 2nd Battalion Headquarters\",\n    dispatch_type: \"USAR_BATTALION_MOBILIZATION\",\n    priority: \"CRITICAL\",\n    payload: {\n      battalion: \"NDRF 2nd Battalion (Haringhata Base)\",\n      equipment_mandate: [\"Canine Search Teams\", \"Acoustic Life Detectors\", \"Hydraulic Shoring Kits\"],\n      staging_point: \"Maidan Brigade Parade Ground (HLZ-1)\"\n    }\n  }\n];\n\nreturn [{\n  json: {\n    status: \"BROADCAST_COMPLETED\",\n    dispatched_at: new Date().toISOString(),\n    broadcast_count: broadcasts.length,\n    broadcasts: broadcasts\n  }\n}];"
+        }
+      },
+      {
+        "id": "node-agent10",
+        "name": "Agent 10: Official NDMA SITREP Generator",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2880,
+          280
+        ],
+        "parameters": {
+          "jsCode": "// Agent 10: Official NDMA Situation Report (SITREP) Engine\nconst incident = $('Agent 1: SOS Ingestion & Normalizer').first().json.incident;\nconst gis = $('Agent 3: GIS Hazard Zone Mapping').first().json.hazard_zones;\nconst routing = $('Agent 8: Dynamic Green Corridor & Route Optimizer').first().json;\nconst broadcast = $('Agent 9: Multi-Agency Telematics Broadcast').first().json;\nconst medical = $('Agent 7: Blood Bank & Medical Forecasting').first().json;\n\nconst now = new Date();\nconst sitrepId = `NDMA-SITREP-${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}-${Math.floor(100 + Math.random()*900)}`;\n\nconst sitrep = {\n  header: {\n    sitrep_id: sitrepId,\n    classification: \"FLASH PRIORITY // LEVEL 3 NATIONAL DISASTER\",\n    issuing_authority: \"National Disaster Management Authority (NDMA) & WB SDMA\",\n    incident_name: `OPERATION SANJEEVANI \u2014 ${incident.disaster_type} RESPONSE`,\n    timestamp: now.toISOString(),\n    coordinates: `${incident.latitude}\u00b0 N, ${incident.longitude}\u00b0 E`,\n    location: incident.location_name\n  },\n  executive_summary: `At ${now.toLocaleTimeString()}, a severe ${incident.disaster_type.toLowerCase()} event impacted ${incident.location_name}. Preliminary telemetry estimates ${incident.casualty_estimate} casualties with major structural collapse. Autonomous Multi-Agent Emergency Orchestrator (ARES) has been activated. Red Hazard Perimeter established at ${gis.red_zone.radius_km} km. 2 Green Corridors operational. All trauma and ICU centers on Code Red surge mode.`,\n  containment_zones: {\n    hot_zone_red: `${gis.red_zone.radius_km} km radius \u2014 Mandatory Evacuation & Cordon`,\n    warm_zone_amber: `${gis.amber_zone.radius_km} km radius \u2014 Secondary Triage & Casualty Clearing Post`,\n    cold_zone_green: `${gis.green_zone.radius_km} km radius \u2014 Safe Operational Base & Airhead`\n  },\n  tactical_deployments: {\n    ambulances_in_transit: routing.assigned_fleet.length,\n    designated_trauma_centers: [routing.primary_hospital.name, routing.secondary_hospital.name],\n    green_corridors_active: routing.green_corridors.map(c => c.name),\n    agencies_alerted: broadcast.broadcasts.map(b => b.agency)\n  },\n  critical_logistics_manifest: {\n    top_medicine_deficits: (medical.medicines || []).slice(0, 4).map(m => `${m.name} (${m.quantity} ${m.unit})`),\n    specialized_equipment: (medical.equipment || []).slice(0, 3).map(e => `${e.name} (Qty: ${e.quantity})`)\n  },\n  public_advisory: [\n    \"Evacuate multi-story and cracked concrete structures immediately.\",\n    \"Do NOT use elevators. Shut off domestic LPG gas valves and main electrical breakers.\",\n    \"Keep emergency transit corridors clear for NDRF and Ambulance convoys.\",\n    \"For emergency rescue and medical triage, dial ERSS 112 or ARES Emergency Hotline 108.\"\n  ]\n};\n\nreturn [{\n  json: {\n    success: true,\n    execution_mode: \"ARES_AUTONOMOUS_MULTIAGENT_PIPELINE\",\n    orchestrated_at: now.toISOString(),\n    sitrep: sitrep\n  }\n}];"
+        }
+      },
+      {
+        "id": "node-respond",
+        "name": "\ud83c\udfaf Tactical Response Output",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.1,
+        "position": [
+          3200,
+          280
+        ],
+        "parameters": {
+          "respondWith": "firstIncomingItem",
+          "options": {
+            "responseCode": 200
+          }
+        }
+      }
+    ],
+    "connections": {
+      "\u26a1 Disaster SOS Webhook": {
+        "main": [
+          [
+            {
+              "node": "Agent 1: SOS Ingestion & Normalizer",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "\u25b6 Simulate Crisis (1-Click Test)": {
+        "main": [
+          [
+            {
+              "node": "Agent 1: SOS Ingestion & Normalizer",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Agent 1: SOS Ingestion & Normalizer": {
+        "main": [
+          [
+            {
+              "node": "Agent 2: Verification & Threat Assessment",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Agent 2: Verification & Threat Assessment": {
+        "main": [
+          [
+            {
+              "node": "Agent 3: GIS Hazard Zone Mapping",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Agent 3: GIS Hazard Zone Mapping": {
+        "main": [
+          [
+            {
+              "node": "Agent 4: Hospital Capacity & ICU Triage",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Agent 4: Hospital Capacity & ICU Triage": {
+        "main": [
+          [
+            {
+              "node": "Agent 5: Ambulance Fleet Dispatcher",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Agent 5: Ambulance Fleet Dispatcher": {
+        "main": [
+          [
+            {
+              "node": "Agent 6: NDRF & SDRF Rescue Tasking",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Agent 6: NDRF & SDRF Rescue Tasking": {
+        "main": [
+          [
+            {
+              "node": "Agent 7: Blood Bank & Medical Forecasting",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Agent 7: Blood Bank & Medical Forecasting": {
+        "main": [
+          [
+            {
+              "node": "Agent 8: Dynamic Green Corridor & Route Optimizer",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Agent 8: Dynamic Green Corridor & Route Optimizer": {
+        "main": [
+          [
+            {
+              "node": "Agent 9: Multi-Agency Telematics Broadcast",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Agent 9: Multi-Agency Telematics Broadcast": {
+        "main": [
+          [
+            {
+              "node": "Agent 10: Official NDMA SITREP Generator",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Agent 10: Official NDMA SITREP Generator": {
+        "main": [
+          [
+            {
+              "node": "\ud83c\udfaf Tactical Response Output",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "saveDataErrorExecution": "all",
+      "saveDataSuccessExecution": "all",
+      "saveManualExecutions": true
+    }
+  }
+]

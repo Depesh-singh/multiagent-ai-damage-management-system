@@ -158,7 +158,18 @@ def get_medicine_requirements(disaster_type: str, patient_count: int) -> Dict:
     Returns:
         Dictionary with medicine requirements scaled to patient count
     """
-    disaster_type = disaster_type.upper()
+    if not isinstance(disaster_type, str) or not disaster_type.strip():
+        disaster_type = "FIRE"
+    else:
+        disaster_type = disaster_type.strip().upper()
+        
+    try:
+        patient_count = int(patient_count)
+    except (ValueError, TypeError):
+        patient_count = 6
+
+    # Clamp patient count
+    patient_count = max(1, min(10000, patient_count))
     
     # Get requirements for disaster type or use default
     requirements = DISASTER_MEDICINE_MAP.get(disaster_type, DEFAULT_REQUIREMENTS)
@@ -175,7 +186,8 @@ def get_medicine_requirements(disaster_type: str, patient_count: int) -> Dict:
         })
     
     # Equipment doesn't scale linearly (base requirements)
-    equipment = requirements.get("equipment", [])
+    import copy
+    equipment = copy.deepcopy(requirements.get("equipment", []))
     
     return {
         "disaster_type": disaster_type,

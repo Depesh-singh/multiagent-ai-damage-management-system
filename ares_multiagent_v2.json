@@ -1,0 +1,481 @@
+[
+  {
+    "id": "aresMagent202601",
+    "name": "ARES \u2014 Multi-Agent Orchestrator (v2)",
+    "nodes": [
+      {
+        "id": "n-web",
+        "name": "Incident Webhook",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          -300,
+          200
+        ],
+        "webhookId": "ares-emergency-sos",
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "ares-emergency",
+          "responseMode": "responseNode",
+          "options": {}
+        }
+      },
+      {
+        "id": "n-man",
+        "name": "Run Demo (Bhubaneswar)",
+        "type": "n8n-nodes-base.manualTrigger",
+        "typeVersion": 1,
+        "position": [
+          -300,
+          380
+        ],
+        "parameters": {}
+      },
+      {
+        "id": "n-init",
+        "name": "Orchestrator: Intake & Context",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          0,
+          280
+        ],
+        "parameters": {
+          "jsCode": "// ORCHESTRATOR: receive, validate, create incident context (shared state)\nconst raw = $input.first()?.json || {};\nconst b = raw.body || raw;\nconst errors = [];\nconst lat = b.latitude !== undefined ? Number(b.latitude) : 20.2961;\nconst lng = b.longitude !== undefined ? Number(b.longitude) : 85.8245;\nif (!isFinite(lat) || lat < -90 || lat > 90) errors.push('invalid latitude');\nif (!isFinite(lng) || lng < -180 || lng > 180) errors.push('invalid longitude');\nconst cas = b.casualty_estimate !== undefined ? Number(b.casualty_estimate) : null;\nif (cas !== null && (!isFinite(cas) || cas < 0)) errors.push('invalid casualty_estimate');\nif (errors.length) throw new Error('ARES validation failed: ' + errors.join('; '));\nconst now = new Date().toISOString();\nconst id = 'ARES-INC-2026-' + String(Math.floor(Math.random()*9000)+1000);\nconst state = {\n  incident_id: id,\n  simulated: b.simulated !== false,\n  incident_type: String(b.disaster_type || 'EARTHQUAKE').toUpperCase(),\n  incident_status: 'RECEIVED',\n  location: { latitude: lat, longitude: lng, address: b.location_name || 'Demo Location, Bhubaneswar, Odisha (SIMULATED)' },\n  description: b.description || 'Strong tremor reported, building damage and trapped persons (SIMULATED).',\n  source: b.reporter_source || 'CITIZEN_SOS',\n  reported_casualties: cas,\n  approval: b.approval || 'PENDING',\n  approved_by: b.approved_by || null,\n  agent_results: {},\n  timeline: [{ t: now, event: 'INCIDENT_CREATED', by: 'ORCHESTRATOR' }],\n  last_updated: now\n};\nreturn [{ json: { state } }];"
+        }
+      },
+      {
+        "id": "n-a1",
+        "name": "Agent 01: Incident Detection",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          300,
+          280
+        ],
+        "parameters": {
+          "jsCode": "const S = $('Orchestrator: Intake & Context').first().json.state;\n// AGENT 01: Incident Detection (deterministic classification; not an official confirmation)\nconst known = ['EARTHQUAKE','FLOOD','FIRE','CYCLONE','LANDSLIDE','INDUSTRIAL_ACCIDENT','ROAD_ACCIDENT','BUILDING_COLLAPSE','HEATWAVE'];\nconst type = known.includes(S.incident_type) ? S.incident_type : 'OTHER';\nconst missing = [];\nif (S.reported_casualties === null) missing.push('casualty_estimate');\nif (!S.location.address) missing.push('address');\nconst sevMap = { EARTHQUAKE:3, FLOOD:3, CYCLONE:4, BUILDING_COLLAPSE:4, FIRE:3, LANDSLIDE:3, INDUSTRIAL_ACCIDENT:3, ROAD_ACCIDENT:2, HEATWAVE:2, OTHER:2 };\nlet sev = sevMap[type];\nif ((S.reported_casualties||0) >= 40) sev = Math.min(5, sev+1);\nconst out = { agent_id:'ARES-AGENT-01', status:'COMPLETED', incident_type:type, coordinates:{lat:S.location.latitude,lng:S.location.longitude},\n  detection_source:S.source, detected_at:new Date().toISOString(), initial_severity:sev, confidence:0.7,\n  duplicate_candidates:[], missing_information:missing, officially_confirmed:false,\n  recommended_next_steps:['Run verification','Collect '+(missing.join(', ')||'field updates')] };\nS.incident_type = type; S.incident_status = 'DETECTED';\nS.agent_results.detection = out;\nS.timeline.push({t:out.detected_at,event:'INCIDENT_DETECTED',by:out.agent_id});\nreturn [{json:{state:S}}];"
+        }
+      },
+      {
+        "id": "n-a2",
+        "name": "Agent 02: Incident Verification",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          600,
+          280
+        ],
+        "parameters": {
+          "jsCode": "const S = $('Agent 01: Incident Detection').first().json.state;\n// AGENT 02: Verification (deterministic rules, never LLM-only)\nconst rel = { ERSS_112:0.9, SEISMIC_TELEMETRY:0.9, FIELD_RESPONDER:0.8, CITIZEN_SOS:0.5, 'CITIZEN_SOS_&_SEISMIC_TELEMETRY':0.8 };\nconst r = rel[S.source] !== undefined ? rel[S.source] : 0.4;\nconst evidence = [], contra = [];\nlet score = r*0.6;\nif (isFinite(S.location.latitude)) { score += 0.15; evidence.push('coordinates present'); }\nif (S.description && S.description.length > 20) { score += 0.1; evidence.push('descriptive report'); }\nif (S.reported_casualties === null) contra.push('no casualty figure');\nelse if (S.reported_casualties > 500) contra.push('casualty figure implausibly high, needs manual check');\nelse { score += 0.1; evidence.push('casualty figure plausible'); }\nscore = Math.round(Math.min(1, score)*100)/100;\nlet status = 'UNVERIFIED';\nif (contra.some(c=>c.includes('implausibly'))) status = 'CONFLICTING_INFORMATION';\nelse if (score >= 0.8) status = 'VERIFIED';\nelse if (score >= 0.55) status = 'PARTIALLY_VERIFIED';\nconst out = { agent_id:'ARES-AGENT-02', status:'COMPLETED', verification_status:status, verification_score:score,\n  supporting_evidence:evidence, contradictory_evidence:contra, source_reliability:r, duplicate_reports:[],\n  recommended_actions: status==='VERIFIED' ? [] : ['Human verification required before deployment'] };\nS.verification_status = status; S.agent_results.verification = out;\nS.timeline.push({t:new Date().toISOString(),event:'INCIDENT_VERIFIED',by:out.agent_id,detail:status});\nreturn [{json:{state:S}}];"
+        }
+      },
+      {
+        "id": "n-a3",
+        "name": "Agent 03: Risk Assessment",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          900,
+          280
+        ],
+        "parameters": {
+          "jsCode": "const S = $('Agent 02: Incident Verification').first().json.state;\n// AGENT 03: Risk Assessment (facts vs estimates vs unknowns kept separate)\nconst sev = S.agent_results.detection.initial_severity;\nconst cas = S.reported_casualties;\nconst level = sev>=5?'CRITICAL':sev>=4?'HIGH':sev>=3?'MODERATE':'LOW';\nconst base = {EARTHQUAKE:1.0, FLOOD:2.0, CYCLONE:3.0, FIRE:0.5, BUILDING_COLLAPSE:0.4}[S.incident_type] || 0.8;\nconst mult = 1 + (sev-3)*0.25;\nconst zones = {\n  red:{radius_km:Math.round(base*mult*10)/10, action:'cordon and evacuate'},\n  amber:{radius_km:Math.round(base*mult*2*10)/10, action:'shelter-in-place / triage post'},\n  green:{radius_km:Math.round(base*mult*4*10)/10, action:'staging and field hospitals'} };\nconst secondary = {EARTHQUAKE:['aftershocks','gas leaks','structural collapse'],FLOOD:['waterborne disease','electrocution'],FIRE:['smoke inhalation','explosion'],CYCLONE:['storm surge','flooding']}[S.incident_type] || ['unknown secondary hazards'];\nconst out = { agent_id:'ARES-AGENT-03', status:'COMPLETED', risk_classification:level,\n  verified_facts:{ reported_casualties:cas, verification:S.verification_status },\n  estimates:{ risk_zones_km:zones, affected_population: cas===null?null:cas*20 },\n  predictions:{ secondary_hazards:secondary },\n  unknown:[cas===null?'casualty count':null,'road closures','hospital data freshness'].filter(Boolean),\n  confidence:0.6, priorities:['life safety','casualty transport','secure perimeter'] };\nS.severity = level; S.risk_zones = zones; S.agent_results.risk = out; S.incident_status='ASSESSED';\nS.timeline.push({t:new Date().toISOString(),event:'RISK_ASSESSED',by:out.agent_id,detail:level});\nreturn [{json:{state:S}}];"
+        }
+      },
+      {
+        "id": "n-a4",
+        "name": "Agent 04: Hospital Source",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1250,
+          0
+        ],
+        "onError": "continueRegularOutput",
+        "parameters": {
+          "method": "GET",
+          "url": "=http://host.docker.internal:5000/api/v1/hospitals/nearby?lat={{ $('Agent 03: Risk Assessment').first().json.state.location.latitude }}&lng={{ $('Agent 03: Risk Assessment').first().json.state.location.longitude }}&radius_km=50",
+          "options": {
+            "timeout": 8000
+          }
+        }
+      },
+      {
+        "id": "n-a5",
+        "name": "Agent 05: Ambulance Source",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1250,
+          140
+        ],
+        "onError": "continueRegularOutput",
+        "parameters": {
+          "method": "GET",
+          "url": "http://host.docker.internal:5000/api/v1/ambulances/?status=AVAILABLE",
+          "options": {
+            "timeout": 8000
+          }
+        }
+      },
+      {
+        "id": "n-a6",
+        "name": "Agent 06: Rescue Source",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1250,
+          280
+        ],
+        "onError": "continueRegularOutput",
+        "parameters": {
+          "method": "GET",
+          "url": "http://host.docker.internal:5000/api/v1/rescue/teams",
+          "options": {
+            "timeout": 8000
+          }
+        }
+      },
+      {
+        "id": "n-a7",
+        "name": "Agent 07: Medical Source",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1250,
+          420
+        ],
+        "onError": "continueRegularOutput",
+        "parameters": {
+          "method": "GET",
+          "url": "=http://host.docker.internal:5000/api/v1/medical/requirements/{{ $('Agent 03: Risk Assessment').first().json.state.incident_type }}?patient_count={{ ($('Agent 03: Risk Assessment').first().json.state.reported_casualties || 10) }}",
+          "options": {
+            "timeout": 8000
+          }
+        }
+      },
+      {
+        "id": "n-a10",
+        "name": "Agent 10: Shelter Source",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1250,
+          560
+        ],
+        "onError": "continueRegularOutput",
+        "parameters": {
+          "method": "GET",
+          "url": "=http://host.docker.internal:5000/api/v1/shelters/nearby?lat={{ $('Agent 03: Risk Assessment').first().json.state.location.latitude }}&lng={{ $('Agent 03: Risk Assessment').first().json.state.location.longitude }}",
+          "options": {
+            "timeout": 8000
+          }
+        }
+      },
+      {
+        "id": "n-merge",
+        "name": "Collect Parallel Results",
+        "type": "n8n-nodes-base.merge",
+        "typeVersion": 3,
+        "position": [
+          1550,
+          280
+        ],
+        "parameters": {
+          "numberInputs": 5
+        }
+      },
+      {
+        "id": "n-syn",
+        "name": "Orchestrator: Plan Synthesis",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1800,
+          280
+        ],
+        "parameters": {
+          "jsCode": "// ORCHESTRATOR: collect parallel agent outputs, validate, resolve conflicts, synthesize plan\nconst S = $('Agent 03: Risk Assessment').first().json.state;\nconst warnings = [], conflicts = [];\nfunction collect(name){\n  try { const items = $(name).all().map(i=>i.json);\n    if (items.length===1 && items[0].error) { warnings.push(name+' failed: '+(items[0].error.message||items[0].error)); return null; }\n    const flat = Array.isArray(items[0]) ? items[0] : items;\n    return flat.filter(x=>x && !x.error);\n  } catch(e){ warnings.push(name+' unavailable: '+e.message); return null; } }\nconst hosp = collect('Agent 04: Hospital Source');\nconst amb  = collect('Agent 05: Ambulance Source');\nconst resc = collect('Agent 06: Rescue Source');\nconst medArr = (()=>{ try { const m=$('Agent 07: Medical Source').first().json; return m&&!m.error?m:null; } catch(e){ return null; } })();\nconst shel = collect('Agent 10: Shelter Source');\nconst lat=S.location.latitude, lng=S.location.longitude;\nconst R=6371, rad=x=>x*Math.PI/180;\nconst hav=(a,b,c,d)=>{const dl=rad(c-a),dn=rad(d-b);const h=Math.sin(dl/2)**2+Math.cos(rad(a))*Math.cos(rad(c))*Math.sin(dn/2)**2;return 2*R*Math.asin(Math.sqrt(h));};\nconst crit = [];\n// AGENT 04 hospital ranking (deterministic scoring)\nlet hospital_plan = [];\nif (hosp && hosp.length){\n  const ranked = hosp.map(h=>{\n    const hl=h.lat??h.latitude, hn=h.lng??h.longitude;\n    const d = (hl!=null&&hn!=null)? hav(lat,lng,hl,hn) : (h.distance_km ?? null);\n    const beds = h.available_beds, icu = h.icu_available;\n    const score = (d==null?0:Math.max(0,1-d/30))*0.4 + (beds==null?0:Math.min(1,beds/50))*0.3 + (icu==null?0:Math.min(1,icu/10))*0.2 + ((h.trauma_level||3)<=2?0.1:0);\n    return { hospital_id:h.id, name:h.name, distance_km:d==null?null:Math.round(d*10)/10, available_beds:beds??'UNKNOWN', icu_available:icu??'UNKNOWN', trauma_level:h.trauma_level??'UNKNOWN', score:Math.round(score*100)/100, data_note:'verify capacity with hospital before routing' };\n  }).sort((a,b)=>b.score-a.score);\n  hospital_plan = ranked.slice(0,5);\n} else { crit.push('hospital_allocation'); warnings.push('No hospital data: hospital plan INCOMPLETE'); }\n// AGENT 05 ambulances: no duplicate assignment, proposals only\nlet ambulance_plan = [];\nif (amb && amb.length){\n  const used = new Set();\n  const need = S.reported_casualties===null ? 2 : Math.max(2, Math.ceil(S.reported_casualties/2));\n  const list = amb.filter(a=>a.status==='AVAILABLE'||!a.status).map(a=>({a, d:(a.current_lat!=null&&a.current_lng!=null)?hav(lat,lng,a.current_lat,a.current_lng):9999})).sort((x,y)=>x.d-y.d);\n  for (const {a,d} of list){ if (ambulance_plan.length>=need) break; if (used.has(a.id||a.vehicle_number)) continue; used.add(a.id||a.vehicle_number);\n    const h = hospital_plan.length ? hospital_plan[ambulance_plan.length % Math.min(hospital_plan.length,3)] : null;\n    ambulance_plan.push({ ambulance_id:a.id, vehicle:a.vehicle_number, type:a.ambulance_type, distance_km: d===9999?null:Math.round(d*10)/10, proposed_destination: h?h.name:'UNASSIGNED', requires_dispatcher_approval:true }); }\n  if (ambulance_plan.length < need) warnings.push('Only '+ambulance_plan.length+' of '+need+' ambulances available: shortage');\n} else { crit.push('ambulance_dispatch'); warnings.push('No ambulance data: ambulance plan INCOMPLETE'); }\n// AGENT 06 rescue\nconst rescue_plan = (resc||[]).slice(0,4).map(t=>({team_id:t.id,name:t.name,type:t.type,members:t.members_count??'UNKNOWN',skills:t.skills||[],note:'simulated resource, no real agency availability assumed',requires_approval:true}));\nif (!resc||!resc.length) { warnings.push('No rescue team data'); }\n// AGENT 07 medical supply (reviewed protocol from backend; else flagged static rule)\nconst n = S.reported_casualties===null ? null : S.reported_casualties;\nlet medical_supply_plan;\nif (medArr) medical_supply_plan = { source:'backend /medical/requirements (reviewed protocol)', data:medArr, assumptions:['casualty estimate '+(n===null?'UNKNOWN':n)] };\nelse { medical_supply_plan = { source:'UNAVAILABLE', data:null, assumptions:[] }; warnings.push('Medical protocol service unavailable: supply plan INCOMPLETE'); }\n// AGENT 08 routes (straight line only as UNVERIFIED indicative; real road routing needs OSRM)\nconst route_plan = ambulance_plan.slice(0,3).map(a=>{ const h=hospital_plan.find(x=>x.name===a.proposed_destination);\n  return { from:'incident', to:a.proposed_destination, distance_km:h?h.distance_km:null, eta_min:null, verified:false, note:'UNVERIFIED: no road-network routing; do not use for ETA' }; });\nif (route_plan.length) warnings.push('Routes are UNVERIFIED (no OSRM/GraphHopper connected)');\n// AGENT 10 shelters\nconst shelter_plan = (shel||[]).map(s=>({name:s.name,capacity:s.capacity,occupancy:s.current_occupancy,headroom:(s.capacity!=null&&s.current_occupancy!=null)?s.capacity-s.current_occupancy:'UNKNOWN',requires_approval:true})).slice(0,3);\n// conflict detection\nconst ids = ambulance_plan.map(a=>a.ambulance_id); if (new Set(ids).size!==ids.length) conflicts.push('duplicate ambulance assignment');\nif (hospital_plan.length && hospital_plan.every(h=>h.available_beds==='UNKNOWN')) conflicts.push('all hospital capacity UNKNOWN');\n// AGENT 09 communications (SIMULATED only)\nconst mk=(type,to,subject,body)=>({type,recipient:to,priority:'HIGH',incident_id:S.incident_id,subject,body,delivery_status:'SIMULATED_NOT_SENT',approval_required:true,timestamp:new Date().toISOString()});\nconst summaryLine = S.incident_type+' at '+S.location.address+' | risk '+S.severity+' | verification '+S.verification_status;\nconst communication_plan = [\n  mk('INCIDENT_ALERT','District Control Room','SIMULATED: '+S.incident_type,summaryLine),\n  mk('HOSPITAL_REQUEST', hospital_plan[0]?hospital_plan[0].name:'Hospitals','SIMULATED: surge readiness','Prepare for casualties. Confirm bed and ICU availability. '+summaryLine),\n  mk('RESCUE_REQUEST','Rescue teams','SIMULATED: tasking proposal',summaryLine)\n];\n// priorities and status\nconst priorities = S.agent_results.risk.priorities;\nconst incomplete = crit.length>0;\nconst plan = { incident_id:S.incident_id, simulated:S.simulated,\n  response_summary: summaryLine + (incomplete?' | PLAN INCOMPLETE: '+crit.join(', '):''),\n  priorities, hospital_plan, ambulance_plan, rescue_plan, medical_supply_plan, route_plan, shelter_plan, communication_plan,\n  conflicts, warnings, plan_incomplete:incomplete, missing_agents:crit, approval_required:true, plan_status:'PENDING_APPROVAL' };\nS.response_plan = plan; S.incident_status='RESPONSE_PLANNED';\nS.timeline.push({t:new Date().toISOString(),event:'RESPONSE_PLAN_CREATED',by:'ORCHESTRATOR'});\nreturn [{json:{state:S}}];"
+        }
+      },
+      {
+        "id": "n-gate",
+        "name": "Human Approval Gate & Report",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2100,
+          280
+        ],
+        "parameters": {
+          "jsCode": "// HUMAN APPROVAL GATE + AUTHORIZED (SIMULATED) DEPLOYMENT + REPORT (Agent 11) + MONITORING SEED (Agent 12)\nconst S = $('Orchestrator: Plan Synthesis').first().json.state;\nconst plan = S.response_plan; const now = new Date().toISOString();\nconst report = (kind)=>({ report_type:kind, incident_id:S.incident_id, generated_at:now, simulated:S.simulated,\n  verified_information:{ verification:S.verification_status, reported_casualties:S.reported_casualties },\n  estimates:S.agent_results.risk.estimates,\n  response_status:plan.plan_status, hospitals_proposed:plan.hospital_plan.map(h=>h.name),\n  ambulances_proposed:plan.ambulance_plan.length, rescue_teams_proposed:plan.rescue_plan.length,\n  pending_tasks:['Confirm hospital capacity','Verify routes with road-network routing','Human sign-off'],\n  operational_challenges:plan.warnings, recommendations:plan.priorities });\nconst approved = S.approval === 'APPROVED' && S.approved_by;\nif (S.approval === 'APPROVED' && !S.approved_by) plan.warnings.push('APPROVED ignored: approved_by is required for audit');\nif (plan.plan_incomplete && approved) plan.warnings.push('Approving an INCOMPLETE plan: missing '+plan.missing_agents.join(', '));\nlet result;\nif (!approved) {\n  plan.plan_status = 'PENDING_APPROVAL';\n  S.timeline.push({t:now,event:'AWAITING_APPROVAL',by:'ORCHESTRATOR'});\n  result = { stage:'AWAITING_HUMAN_APPROVAL', how_to_approve:'Re-POST the same payload with {\"approval\":\"APPROVED\",\"approved_by\":\"<officer name>\"}', report:report('Initial Situation Report') };\n} else {\n  plan.plan_status = 'APPROVED_DEPLOYED_SIMULATED';\n  S.timeline.push({t:now,event:'APPROVAL_GRANTED',by:S.approved_by});\n  S.timeline.push({t:now,event:'SIMULATED_DEPLOYMENT',by:'ORCHESTRATOR'});\n  const monitoring = { agent_id:'ARES-AGENT-12', mode:'event_driven', watch:['HOSPITAL_CAPACITY_CHANGED','ROAD_CLOSED','AMBULANCE_AVAILABLE','SEVERITY_CHANGED','NEW_HAZARD_DETECTED'], note:'Reassessment runs only for agents affected by an event, via the ares-event webhook' };\n  const deployment = { delivery:'SIMULATED, no real calls, SMS or dispatch performed', ambulance_orders:plan.ambulance_plan.map(a=>({vehicle:a.vehicle,destination:a.proposed_destination,status:'ASSIGNED_SIMULATED'})), messages:plan.communication_plan.map(m=>({...m,delivery_status:'SIMULATED_DELIVERED'})) };\n  result = { stage:'DEPLOYED_SIMULATED', deployment, monitoring, report:report('Emergency Status Report') };\n}\nS.last_updated = now;\nreturn [{json:{success:true,mode:'ARES_N8N_MULTI_AGENT',incident_id:S.incident_id,result,response_plan:plan,shared_state:{incident_status:S.incident_status,severity:S.severity,verification_status:S.verification_status,timeline:S.timeline,agent_results:S.agent_results}}}];"
+        }
+      },
+      {
+        "id": "n-resp",
+        "name": "Respond",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.1,
+        "position": [
+          2400,
+          280
+        ],
+        "parameters": {
+          "respondWith": "firstIncomingItem",
+          "options": {
+            "responseCode": 200
+          }
+        }
+      },
+      {
+        "id": "n-ev",
+        "name": "Event Webhook (Reassessment)",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          -300,
+          800
+        ],
+        "webhookId": "ares-event-hook",
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "ares-event",
+          "responseMode": "responseNode",
+          "options": {}
+        }
+      },
+      {
+        "id": "n-re",
+        "name": "Agent 12: Reassessment Router",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          0,
+          800
+        ],
+        "parameters": {
+          "jsCode": "// EVENT-DRIVEN REASSESSMENT (Agent 12): map event -> only the agents that must re-run\nconst b = $input.first().json.body || $input.first().json;\nconst map = { HOSPITAL_CAPACITY_CHANGED:['ARES-AGENT-04','ARES-AGENT-08','ARES-AGENT-09'], ROAD_CLOSED:['ARES-AGENT-08','ARES-AGENT-05'], AMBULANCE_AVAILABLE:['ARES-AGENT-05'], SEVERITY_CHANGED:['ARES-AGENT-03','ARES-AGENT-04','ARES-AGENT-05','ARES-AGENT-06','ARES-AGENT-07','ARES-AGENT-10','ARES-AGENT-11'], NEW_HAZARD_DETECTED:['ARES-AGENT-03','ARES-AGENT-06','ARES-AGENT-10'], SUPPLY_SHORTAGE:['ARES-AGENT-07'], RESCUE_TEAM_DEPLOYED:['ARES-AGENT-06','ARES-AGENT-11'] };\nconst ev = String(b.event||'').toUpperCase();\nif (!map[ev]) return [{json:{success:false,error:'Unknown event',supported:Object.keys(map)}}];\nreturn [{json:{success:true,incident_id:b.incident_id||null,event:ev,agents_to_rerun:map[ev],action:'Re-POST the incident to /webhook/ares-emergency with updated fields; only listed agents need fresh data',not_restarted:'all other agents keep prior outputs'}}];"
+        }
+      },
+      {
+        "id": "n-resp2",
+        "name": "Respond Event",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.1,
+        "position": [
+          300,
+          800
+        ],
+        "parameters": {
+          "respondWith": "firstIncomingItem",
+          "options": {}
+        }
+      }
+    ],
+    "connections": {
+      "Incident Webhook": {
+        "main": [
+          [
+            {
+              "node": "Orchestrator: Intake & Context",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Run Demo (Bhubaneswar)": {
+        "main": [
+          [
+            {
+              "node": "Orchestrator: Intake & Context",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Orchestrator: Intake & Context": {
+        "main": [
+          [
+            {
+              "node": "Agent 01: Incident Detection",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Agent 01: Incident Detection": {
+        "main": [
+          [
+            {
+              "node": "Agent 02: Incident Verification",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Agent 02: Incident Verification": {
+        "main": [
+          [
+            {
+              "node": "Agent 03: Risk Assessment",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Agent 03: Risk Assessment": {
+        "main": [
+          [
+            {
+              "node": "Agent 04: Hospital Source",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Agent 05: Ambulance Source",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Agent 06: Rescue Source",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Agent 07: Medical Source",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Agent 10: Shelter Source",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Collect Parallel Results": {
+        "main": [
+          [
+            {
+              "node": "Orchestrator: Plan Synthesis",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Orchestrator: Plan Synthesis": {
+        "main": [
+          [
+            {
+              "node": "Human Approval Gate & Report",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Human Approval Gate & Report": {
+        "main": [
+          [
+            {
+              "node": "Respond",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Event Webhook (Reassessment)": {
+        "main": [
+          [
+            {
+              "node": "Agent 12: Reassessment Router",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Agent 12: Reassessment Router": {
+        "main": [
+          [
+            {
+              "node": "Respond Event",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Agent 04: Hospital Source": {
+        "main": [
+          [
+            {
+              "node": "Collect Parallel Results",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Agent 05: Ambulance Source": {
+        "main": [
+          [
+            {
+              "node": "Collect Parallel Results",
+              "type": "main",
+              "index": 1
+            }
+          ]
+        ]
+      },
+      "Agent 06: Rescue Source": {
+        "main": [
+          [
+            {
+              "node": "Collect Parallel Results",
+              "type": "main",
+              "index": 2
+            }
+          ]
+        ]
+      },
+      "Agent 07: Medical Source": {
+        "main": [
+          [
+            {
+              "node": "Collect Parallel Results",
+              "type": "main",
+              "index": 3
+            }
+          ]
+        ]
+      },
+      "Agent 10: Shelter Source": {
+        "main": [
+          [
+            {
+              "node": "Collect Parallel Results",
+              "type": "main",
+              "index": 4
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "saveDataErrorExecution": "all",
+      "saveDataSuccessExecution": "all",
+      "saveManualExecutions": true
+    }
+  }
+]

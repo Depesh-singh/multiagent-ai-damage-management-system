@@ -3,6 +3,15 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# Node / Frontend
+node_modules/
+*/node_modules/
+dist/
+*/dist/
+build/
+*/build/
+.npm/
+
 # Virtual environments
 venv/
 .venv/
@@ -10,13 +19,38 @@ ENV/
 env/
 active_env/
 
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Agent & IDE files
+.vscode/
+.idea/
+.gemini/
+.agent/
+.agents/
+.gsd/
+
+# Environment variables (secrets)
+.env
+.env.*
+!.env.example
+
+# Local system files & logs
+Thumbs.db
+Desktop.ini
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
 # Streamlit
 .streamlit/
 
-# IDE files
-.vscode/
-.idea/
-
-# Local system files
-Thumbs.db
-Desktop.ini
+# Temporary archives & test screenshots
+*.zip
+design_extracted/
+arcgis_screenshot.png
+cdp_screenshot.png
+final_map_verified.png
