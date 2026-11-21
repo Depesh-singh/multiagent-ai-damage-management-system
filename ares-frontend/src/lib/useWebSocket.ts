@@ -32,7 +32,7 @@ export function useAresWebSocket(onEvent?: (msg: WebSocketMessage) => void) {
         ws.onopen = () => {
           if (unmounted) return;
           setIsConnected(true);
-          console.log('[ARES WebSocket] Connected to real-time telemetry stream');
+          console.log('[SAVE WebSocket] Connected to real-time telemetry stream');
         };
 
         ws.onmessage = (event) => {
@@ -42,7 +42,7 @@ export function useAresWebSocket(onEvent?: (msg: WebSocketMessage) => void) {
             setLastMessage(data);
             if (onEvent) onEvent(data);
           } catch (e) {
-            console.warn('[ARES WebSocket] Parse error:', e);
+            console.warn('[SAVE WebSocket] Parse error:', e);
           }
         };
 
@@ -59,7 +59,7 @@ export function useAresWebSocket(onEvent?: (msg: WebSocketMessage) => void) {
           ws.close();
         };
       } catch (err) {
-        console.warn('[ARES WebSocket] Connection failure:', err);
+        console.warn('[SAVE WebSocket] Connection failure:', err);
         reconnectTimeoutRef.current = setTimeout(connect, 3000);
       }
     }

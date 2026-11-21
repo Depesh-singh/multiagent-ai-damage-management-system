@@ -112,14 +112,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <div className="min-w-0">
               <div className="flex items-center space-x-1.5">
                 <span className="text-white font-extrabold tracking-wider text-base font-sans leading-none">
-                  ARES
+                  SAVE
                 </span>
                 <span className="text-[9px] bg-[#23B9D6]/15 text-[#23B9D6] border border-[#23B9D6]/30 px-1 py-0.2 rounded font-mono font-semibold">
                   PRO
                 </span>
               </div>
               <div className="text-[9px] text-[#94A3B8] tracking-tight truncate mt-0.5 font-medium leading-tight">
-                Autonomous Response & Emergency System
+                Strategic Agent-Based Victim Evacuation
               </div>
             </div>
           )}

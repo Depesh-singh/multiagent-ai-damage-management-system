@@ -245,10 +245,10 @@ export const AgentControlRoomView: React.FC<AgentControlRoomViewProps> = ({
               <circle cx="200" cy="180" r="70" fill="none" stroke="#23B9D6" strokeWidth="1" strokeDasharray="3 3" strokeOpacity="0.15" />
             </svg>
 
-            {/* Central ARES Orchestrator Hub */}
+            {/* Central SAVE Orchestrator Hub */}
             <div className="z-10 w-24 h-24 rounded-full bg-[#080F1B] border-2 border-[#23B9D6] flex flex-col items-center justify-center text-center shadow-cyan-glow p-2">
-              <div className="text-xl font-black text-[#23B9D6] tracking-tighter">A</div>
-              <div className="text-[10px] font-bold text-white tracking-wider">ARES</div>
+              <div className="text-xl font-black text-[#23B9D6] tracking-tighter">S</div>
+              <div className="text-[10px] font-bold text-white tracking-wider">SAVE</div>
               <div className="text-[8px] text-[#94A3B8] font-mono leading-none">Orchestrator</div>
             </div>
 

@@ -43,7 +43,7 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str = "web-client"
         await websocket.send_json({
             "type": "CONNECTION_ESTABLISHED",
             "client_id": client_id,
-            "status": "CONNECTED_TO_ARES_LIVE_TELEMETRY"
+            "status": "CONNECTED_TO_SAVE_LIVE_TELEMETRY"
         })
         while True:
             data = await websocket.receive_text()

@@ -35,7 +35,7 @@ class GovernmentReportingAgent(BaseAgent):
 
         now_str = datetime.now(timezone.utc).strftime("%d-%b-%Y %H:%M:%S UTC")
 
-        sitrep_text = f"""# 🚨 ARES DISASTER SITUATION REPORT (SITREP-01)
+        sitrep_text = f"""# 🚨 SAVE DISASTER SITUATION REPORT (SITREP-01)
 **CLASSIFICATION:** RESTRICTED // STATE DISASTER MANAGEMENT AUTHORITY (SDMA)
 **DATE & TIME:** {now_str}
 **INCIDENT REFERENCE:** #{incident_id[:8]}
@@ -90,7 +90,7 @@ class GovernmentReportingAgent(BaseAgent):
             output_data=output,
             recommendation=rec,
             confidence=0.97,
-            source="ARES-GovReportingExecutive",
+            source="SAVE-GovReportingExecutive",
         )
 
         async with await self._get_db_session() as db:

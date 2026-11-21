@@ -58,7 +58,7 @@ export const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<UserProfile | null>({
     id: 'user-01',
     username: 'commander.kolkata',
-    email: 'commander@ares.gov.in',
+    email: 'commander@save.gov.in',
     role: 'ADMIN',
     full_name: 'Col. Rajesh Sharma',
     agency: 'National Disaster Response Authority',
@@ -285,7 +285,7 @@ export const App: React.FC = () => {
 
   const currentHeader = PAGE_TITLES[activeTab] || {
     title: 'OPERATIONAL COMMAND',
-    subtitle: 'Autonomous Emergency Response System',
+    subtitle: 'Strategic Agent-Based Victim Evacuation',
   };
 
   return (

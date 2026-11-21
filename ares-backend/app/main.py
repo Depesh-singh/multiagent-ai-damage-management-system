@@ -1,4 +1,4 @@
-"""ARES — Autonomous Response & Emergency System — FastAPI application."""
+"""SAVE — Strategic Agent-Based Victim Evacuation — FastAPI application."""
 
 from __future__ import annotations
 
@@ -38,7 +38,7 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
 
 
 app = FastAPI(
-    title="ARES — AI Response & Emergency System",
+    title="SAVE — Strategic Agent-Based Victim Evacuation",
     description="Mission Control, Multi-Agent Coordination, and Emergency Response Platform",
     version="1.0.0",
     lifespan=lifespan,
@@ -101,7 +101,7 @@ async def health():
         db_status = f"error: {str(exc)}"
 
     return {
-        "service": "ARES — Autonomous Response & Emergency System",
+        "service": "SAVE — Strategic Agent-Based Victim Evacuation",
         "status": "healthy" if db_status == "connected" else "degraded",
         "version": "1.0.0",
         "agents": 10,

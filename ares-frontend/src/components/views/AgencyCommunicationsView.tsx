@@ -253,10 +253,10 @@ export const AgencyCommunicationsView: React.FC<AgencyCommunicationsViewProps> =
               <circle cx="200" cy="180" r="45" fill="none" stroke="#23B9D6" strokeWidth="1" strokeOpacity="0.4" />
             </svg>
 
-            {/* Central ARES Command (EOC) Hub */}
+            {/* Central SAVE Command (EOC) Hub */}
             <div className="z-10 w-24 h-24 rounded-full bg-[#080F1B] border-2 border-[#23B9D6] flex flex-col items-center justify-center text-center shadow-cyan-glow p-1">
-              <div className="text-xl font-black text-[#23B9D6]">A</div>
-              <div className="text-[10px] font-bold text-white">ARES Command</div>
+              <div className="text-xl font-black text-[#23B9D6]">S</div>
+              <div className="text-[10px] font-bold text-white">SAVE Command</div>
               <div className="text-[8px] text-[#94A3B8] font-mono">(EOC)</div>
             </div>
 

@@ -134,7 +134,7 @@ export const SystemAdministrationView: React.FC<SystemAdministrationViewProps> =
                   latency: '4ms',
                 },
                 {
-                  name: 'ARES Multi-Agent Swarm (10 Agents)',
+                  name: 'SAVE Multi-Agent Swarm (10 Agents)',
                   port: 'In-Memory',
                   status: 'ACTIVE',
                   uptime: '100%',

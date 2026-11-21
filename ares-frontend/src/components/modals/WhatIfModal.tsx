@@ -61,7 +61,7 @@ export const WhatIfModal: React.FC<WhatIfModalProps> = ({ isOpen, onClose }) => 
         <div className="p-4 border-b border-[#1E3A5F] flex items-center justify-between bg-[#0B1220]/60">
           <div className="flex items-center space-x-2 text-amber-400 font-bold text-sm">
             <Sliders className="w-4 h-4" />
-            <span>ARES DISASTER WHAT-IF SIMULATION ENGINE</span>
+            <span>SAVE DISASTER WHAT-IF SIMULATION ENGINE</span>
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-white">
             <X className="w-4 h-4" />

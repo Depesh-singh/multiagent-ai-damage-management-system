@@ -154,7 +154,7 @@ export const TopBar: React.FC<TopBarProps> = ({
             <div className="absolute right-0 mt-2 w-56 ares-card p-2 shadow-2xl z-50 text-xs border border-[#263B50]">
               <div className="p-2 border-b border-[#263B50] mb-1">
                 <div className="font-bold text-white">{currentUser?.full_name || 'Command Admin'}</div>
-                <div className="text-[10px] text-[#94A3B8] font-mono">{currentUser?.email || 'admin@ares.gov.in'}</div>
+                <div className="text-[10px] text-[#94A3B8] font-mono">{currentUser?.email || 'admin@save.gov.in'}</div>
                 <div className="text-[10px] text-[#23B9D6] font-mono mt-0.5">{currentUser?.role || 'INCIDENT_COMMANDER'}</div>
               </div>
 

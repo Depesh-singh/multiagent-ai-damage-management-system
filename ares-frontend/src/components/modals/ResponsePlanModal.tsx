@@ -46,7 +46,7 @@ export const ResponsePlanModal: React.FC<PlanModalProps> = ({
             <ShieldCheck className="w-5 h-5 text-[#23B9D6]" />
             <div>
               <div className="text-white font-bold text-sm">
-                ARES UNIFIED TACTICAL RESPONSE PLAN
+                SAVE UNIFIED TACTICAL RESPONSE PLAN
               </div>
               <div className="text-[10px] text-slate-400 font-mono">
                 Incident #{plan.incident_id?.slice(0, 8)} • Orchestration Duration: {plan.execution_duration_seconds}s

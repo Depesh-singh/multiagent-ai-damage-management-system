@@ -104,7 +104,7 @@ async def create_supply_request(req: SupplyRequestCreate, db: AsyncSession = Dep
         quantity_dispatched=0,
         quantity_delivered=0,
         status=SupplyStatus.APPROVED,
-        requested_by="ARES-Hospital-Admin",
+        requested_by="SAVE-Hospital-Admin",
     )
     db.add(sub)
     await db.commit()
