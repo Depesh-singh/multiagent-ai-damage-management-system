@@ -205,11 +205,11 @@ export const clearAuthToken = (): void => {
 export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const token = getAuthToken();
   const headers = new Headers(options.headers || {});
-  
+
   if (!headers.has('Content-Type') && !(options.body instanceof FormData)) {
     headers.set('Content-Type', 'application/json');
   }
-  
+
   if (token) {
     headers.set('Authorization', `Bearer ${token}`);
   }
@@ -226,7 +226,7 @@ export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): 
     try {
       const errJson = await response.json();
       if (errJson.detail) errorDetail = errJson.detail;
-    } catch (_) {}
+    } catch (_) { }
     throw new Error(errorDetail);
   }
 
