@@ -82,21 +82,19 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
           <div className="flex bg-[#0B1220] p-1 rounded-md border border-[#1E3A5F] text-xs">
             <button
               onClick={() => setActiveSubTab('architecture')}
-              className={`px-3 py-1.5 rounded font-medium transition ${
-                activeSubTab === 'architecture'
-                  ? 'bg-[#23B9D6] text-black font-semibold'
-                  : 'text-slate-400 hover:text-white'
-              }`}
+              className={`px-3 py-1.5 rounded font-medium transition ${activeSubTab === 'architecture'
+                ? 'bg-[#23B9D6] text-black font-semibold'
+                : 'text-slate-400 hover:text-white'
+                }`}
             >
               Pipeline & Roster (10)
             </button>
             <button
               onClick={() => setActiveSubTab('history')}
-              className={`px-3 py-1.5 rounded font-medium transition flex items-center space-x-1.5 ${
-                activeSubTab === 'history'
-                  ? 'bg-[#23B9D6] text-black font-semibold'
-                  : 'text-slate-400 hover:text-white'
-              }`}
+              className={`px-3 py-1.5 rounded font-medium transition flex items-center space-x-1.5 ${activeSubTab === 'history'
+                ? 'bg-[#23B9D6] text-black font-semibold'
+                : 'text-slate-400 hover:text-white'
+                }`}
             >
               <span>Execution Runs</span>
               <span className="bg-slate-800 text-slate-200 px-1.5 py-0.2 rounded text-[10px] font-mono">
@@ -241,11 +239,10 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
                 <div
                   key={agent.type || i}
                   onClick={() => setSelectedAgent(agent)}
-                  className={`ares-panel p-3.5 cursor-pointer transition border ${
-                    isSelected
-                      ? 'border-[#23B9D6] bg-[#1A2940]'
-                      : 'hover:border-slate-500 bg-[#131F31]'
-                  }`}
+                  className={`ares-panel p-3.5 cursor-pointer transition border ${isSelected
+                    ? 'border-[#23B9D6] bg-[#1A2940]'
+                    : 'hover:border-slate-500 bg-[#131F31]'
+                    }`}
                 >
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center space-x-2">
@@ -360,8 +357,8 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
                 const durationMs =
                   run.completed_at && run.started_at
                     ? Math.round(
-                        (new Date(run.completed_at).getTime() - new Date(run.started_at).getTime())
-                      )
+                      (new Date(run.completed_at).getTime() - new Date(run.started_at).getTime())
+                    )
                     : null;
 
                 return (
@@ -403,11 +400,10 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
                           {Math.round((run.confidence || 0.95) * 100)}% Conf
                         </span>
                         <span
-                          className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
-                            run.status === 'COMPLETED'
-                              ? 'bg-emerald-950 text-emerald-300 border border-emerald-800'
-                              : 'bg-amber-950 text-amber-300 border border-amber-800'
-                          }`}
+                          className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${run.status === 'COMPLETED'
+                            ? 'bg-emerald-950 text-emerald-300 border border-emerald-800'
+                            : 'bg-amber-950 text-amber-300 border border-amber-800'
+                            }`}
                         >
                           {run.status}
                         </span>
