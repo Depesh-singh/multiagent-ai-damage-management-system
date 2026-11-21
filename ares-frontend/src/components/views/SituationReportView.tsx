@@ -41,7 +41,7 @@ export const SituationReportView: React.FC<SituationReportViewProps> = ({
   const currentReportContent =
     reportData?.content_markdown ||
     (selectedIncident
-      ? `# 🚨 ARES DISASTER SITUATION REPORT (SITREP-01)
+      ? `# 🚨 SAVE DISASTER SITUATION REPORT (SITREP-01)
 **CLASSIFICATION:** RESTRICTED // STATE DISASTER MANAGEMENT AUTHORITY (SDMA)
 **INCIDENT REFERENCE:** #${selectedIncident?.id?.slice(0, 8) || 'EQ-2026-WB'}
 **LOCATION:** ${selectedIncident?.address || 'Kolkata Metropolitan Area'}

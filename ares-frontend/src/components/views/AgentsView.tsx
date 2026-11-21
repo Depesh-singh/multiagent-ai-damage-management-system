@@ -69,7 +69,7 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
           </div>
           <div>
             <h1 className="text-base font-bold text-white tracking-wide">
-              ARES AI AGENT CONTROL ROOM & MULTI-AGENT ORCHESTRATION
+              SAVE AI AGENT CONTROL ROOM & MULTI-AGENT ORCHESTRATION
             </h1>
             <p className="text-xs text-slate-400">
               10 Specialist Autonomous Agents • Deterministic Safeguards • Common State Architecture

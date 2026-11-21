@@ -114,7 +114,7 @@ async def run_what_if_simulation(
 
 @router.post("/demo/earthquake")
 async def trigger_full_earthquake_demo(db: AsyncSession = Depends(get_db)):
-    """Triggers the complete 12-step Earthquake Response demonstration specified in the ARES blueprint."""
+    """Triggers the complete 12-step Earthquake Response demonstration specified in the SAVE blueprint."""
     # 1. Create Earthquake Disaster
     disaster_id = uuid.uuid4()
     disaster = Disaster(
@@ -172,7 +172,7 @@ async def trigger_full_earthquake_demo(db: AsyncSession = Depends(get_db)):
 
     return {
         "status": "success",
-        "demo_title": "ARES End-to-End Earthquake Response Demonstration",
+        "demo_title": "SAVE End-to-End Earthquake Response Demonstration",
         "disaster_id": str(disaster_id),
         "incident_id": str(inc_id),
         "demonstration_steps_executed": [

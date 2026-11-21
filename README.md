@@ -1,7 +1,7 @@
-# 🚨 ARES: Autonomous Response & Emergency System
+# 🚨 SAVE: Strategic Agent-Based Victim Evacuation
 **Next-Generation Multi-Agent AI Disaster Management & Tactical Emergency Coordination Platform**
 
-ARES is an enterprise-grade, real-time emergency operations command system designed to coordinate multi-agency disaster response with sub-second latency. Powered by a 10-agent autonomous orchestration pipeline, ARES synchronizes triage, hospital bed allocation, ambulance dispatch, search and rescue deployments, route optimization, medical supply requisitions, and statutory government SITREPs—all governed by deterministic mathematical safeguards and a statutory Human Commander Authorization Gate.
+SAVE (Strategic Agent-Based Victim Evacuation) is an enterprise-grade, real-time emergency operations command system designed to coordinate multi-agency disaster response with sub-second latency. Powered by a 10-agent autonomous orchestration pipeline, SAVE synchronizes triage, hospital bed allocation, ambulance dispatch, search and rescue deployments, route optimization, medical supply requisitions, and statutory government SITREPs—all governed by deterministic mathematical safeguards and a statutory Human Commander Authorization Gate.
 
 ---
 
@@ -9,14 +9,14 @@ ARES is an enterprise-grade, real-time emergency operations command system desig
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
-│                                   ARES SYSTEM ARCHITECTURE                             │
+│                                   SAVE SYSTEM ARCHITECTURE                             │
 └────────────────────────────────────────────────────────────────────────────────────────┘
 
     [Citizen SOS / ERSS 112 / Sensor Telemetry / n8n Multi-Agent Webhooks]
                                       │
                                       ▼
     ┌────────────────────────────────────────────────────────────────────────────────┐
-    │                       ARES BACKEND (FastAPI + Async Python)                    │
+    │                       SAVE BACKEND (FastAPI + Async Python)                    │
     │  • Async REST API (/api/v1)              • WebSocket Broadcast Engine (/ws)    │
     │  • Canonical SQLite DB (ares-backend/ares.db) • Telemetry & Event Pub/Sub       │
     └──────────────────────┬──────────────────────────────────┬──────────────────────┘

@@ -1,4 +1,4 @@
-# ARES — Autonomous Response & Emergency System
+# SAVE — Strategic Agent-Based Victim Evacuation
 ## Product Requirements Document (PRD)
 
 | **Document Version** | 1.0.0 |
@@ -15,7 +15,7 @@
 ### 1.1 Mission & Vision
 During major natural disasters and civic catastrophes (earthquakes, severe cyclones, urban flash flooding, industrial fires), the first **60 minutes ("The Golden Hour")** dictate casualty survival rates. Modern disaster management operations suffer from fragmented communication between disparate agencies (Police, Fire, EMS, Military, Hospitals, Civil Defense), uncoordinated dispatch, duplicate resource deployment, and overwhelming cognitive load on human commanders.
 
-**ARES (Autonomous Response & Emergency System)** is an integrated, mission-critical incident command platform powered by a collaborative swarm of **10 specialized AI agents** operating in parallel. ARES ingests emergency SOS telemetry, verifies incidents against multi-source signals, triangulates hazard epicenters, computes clinical surge needs, dynamically allocates hospital beds and ambulances, generates bypass corridors around collapsed infrastructure, and drafts unified tactical response plans for instant Human Commander authorization.
+**SAVE (Strategic Agent-Based Victim Evacuation)** is an integrated, mission-critical incident command platform powered by a collaborative swarm of **10 specialized AI agents** operating in parallel. SAVE ingests emergency SOS telemetry, verifies incidents against multi-source signals, triangulates hazard epicenters, computes clinical surge needs, dynamically allocates hospital beds and ambulances, generates bypass corridors around collapsed infrastructure, and drafts unified tactical response plans for instant Human Commander authorization.
 
 ### 1.2 Core Problem Statement
 1. **Siloed Dispatch Chains**: Emergency numbers (Police 100, Fire 101, Ambulance 108, Disaster 1070) operate on independent queues with zero real-time resource visibility.

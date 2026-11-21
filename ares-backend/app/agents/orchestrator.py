@@ -166,7 +166,7 @@ class CentralOrchestrator:
                     f"{rescue_res.output_data.get('deployed_teams_count', 3)} rescue teams, and patient intake at "
                     f"{len(allocated_hospitals)} hospitals for Incident #{incident_id[:8]}."
                 ),
-                proposed_by="ARES-CentralOrchestrator",
+                proposed_by="SAVE-CentralOrchestrator",
                 status=ApprovalStatus.PENDING,
             )
             db.add(approval)

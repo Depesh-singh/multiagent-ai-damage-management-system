@@ -63,14 +63,14 @@ export const SituationReportsView: React.FC<SituationReportsViewProps> = ({
       timestamp: 'Today, 14:35 IST',
       status: 'FINAL',
       severity: selectedIncident?.severity || 'CRITICAL',
-      leadAgency: 'ARES Unified Incident Command',
+      leadAgency: 'SAVE Unified Incident Command',
       casualties: selectedIncident?.estimated_casualties || 18,
       evacuated: 6820,
       ambulancesDeployed: 4,
       rescueTeamsActive: 2,
       hospitalsReceiving: 3,
       summaryText:
-        'ARES Multi-Agent triage detected structural instability and mass casualty risk following seismic tremor. AI orchestration dispatched 4 Advanced Life Support ambulances and 2 NDRF Urban Search & Rescue teams. Emergency green wave transit corridor is active along Park Street toward SSKM Hospital. 25 civilians evacuated to St. Xavier Auditorium Shelter.',
+        'SAVE Multi-Agent triage detected structural instability and mass casualty risk following seismic tremor. AI orchestration dispatched 4 Advanced Life Support ambulances and 2 NDRF Urban Search & Rescue teams. Emergency green wave transit corridor is active along Park Street toward SSKM Hospital. 25 civilians evacuated to St. Xavier Auditorium Shelter.',
     },
     {
       id: 'sr-0146',
@@ -155,7 +155,7 @@ export const SituationReportsView: React.FC<SituationReportsViewProps> = ({
             {
               report: activeReport,
               generated_at: new Date().toISOString(),
-              unified_command: 'ARES Autonomous Emergency System',
+              unified_command: 'SAVE Strategic Emergency System',
               standards: 'NDMA / NDMC National Disaster Guidelines v3.4',
             },
             null,
@@ -428,7 +428,7 @@ export const SituationReportsView: React.FC<SituationReportsViewProps> = ({
                 <div className="relative">
                   <div className="w-2 h-2 rounded-full bg-[#EF4444] absolute -left-[11px] top-1"></div>
                   <div className="text-[11px] font-bold text-white">14:25 — Emergency SOS Reported</div>
-                  <div className="text-[10px] text-[#94A3B8]">Civilian alert verified by ARES triage agents</div>
+                  <div className="text-[10px] text-[#94A3B8]">Civilian alert verified by SAVE triage agents</div>
                 </div>
                 <div className="relative">
                   <div className="w-2 h-2 rounded-full bg-[#23B9D6] absolute -left-[11px] top-1"></div>

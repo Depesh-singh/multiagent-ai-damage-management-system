@@ -50,7 +50,7 @@ async def list_agency_messages(
             AgencyMessageResponse(
                 id="MSG-108",
                 incident_id=incident_id,
-                sender_role="ARES_CENTRAL",
+                sender_role="SAVE_CENTRAL",
                 sender_name="Disaster Ops Director",
                 recipient_agency="AMBULANCE_108",
                 recipient_name="State Medical Dispatch",
@@ -66,7 +66,7 @@ async def list_agency_messages(
             AgencyMessageResponse(
                 id="MSG-112",
                 incident_id=incident_id,
-                sender_role="ARES_CENTRAL",
+                sender_role="SAVE_CENTRAL",
                 sender_name="Disaster Ops Director",
                 recipient_agency="ERSS_112",
                 recipient_name="National Emergency Support Center",
@@ -133,7 +133,7 @@ async def broadcast_alert(
         msg = AgencyMessage(
             id=uuid.uuid4(),
             incident_id=as_uuid(incident_id),
-            sender_role="ARES_BROADCAST_BOT",
+            sender_role="SAVE_BROADCAST_BOT",
             sender_name="Automated Incident Commander",
             recipient_agency=code,
             recipient_name=agency["name"],

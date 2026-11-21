@@ -427,7 +427,7 @@ export const DisasterSimulatorView: React.FC<DisasterSimulatorViewProps> = ({
 
             <div className="p-2 bg-[#132438] rounded border border-[#263B50] flex items-center justify-between">
               <span className="text-xs text-[#94A3B8]">
-                Simulation validated by NDMA Earthquake Vulnerability Atlas & ARES Geospatial AI.
+                Simulation validated by NDMA Earthquake Vulnerability Atlas & SAVE Geospatial AI.
               </span>
               <button
                 onClick={onTriggerDemo}
