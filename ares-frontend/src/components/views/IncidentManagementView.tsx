@@ -55,12 +55,28 @@ export const IncidentManagementView: React.FC<IncidentManagementViewProps> = ({
   const [currentImageIdx, setCurrentImageIdx] = useState(0);
   const [statusUpdating, setStatusUpdating] = useState(false);
 
-  // Sample tactical photos for incident evidence
+  // Curated tactical disaster reconnaissance and damage assessment imagery
   const evidencePhotos = [
-    'https://images.unsplash.com/photo-1599839575945-a9e5af0c3fa5?auto=format&fit=crop&w=600&q=80',
-    'https://images.unsplash.com/photo-1541888946425-d0fbb186c5f7?auto=format&fit=crop&w=600&q=80',
-    'https://images.unsplash.com/photo-1582213782179-e0d53f98f2ca?auto=format&fit=crop&w=600&q=80',
-    'https://images.unsplash.com/photo-1517048676732-d65bc937f952?auto=format&fit=crop&w=600&q=80',
+    {
+      url: 'https://images.unsplash.com/photo-1541888946425-d0fbb186c5f7?auto=format&fit=crop&w=800&q=80',
+      label: 'Structural Collapse & Concrete Debris Field',
+      tag: 'DRONE RECON - CAM 01',
+    },
+    {
+      url: 'https://images.unsplash.com/photo-1582213782179-e0d53f98f2ca?auto=format&fit=crop&w=800&q=80',
+      label: 'Field Triage & Medical First Response',
+      tag: 'GROUND SAR - UNIT 03',
+    },
+    {
+      url: 'https://images.unsplash.com/photo-1584036561566-baf8f5f1b144?auto=format&fit=crop&w=800&q=80',
+      label: 'Emergency Trauma Ward & Medical Intake',
+      tag: 'HOSPITAL COMMAND',
+    },
+    {
+      url: 'https://images.unsplash.com/photo-1579208575657-c595a053b9b7?auto=format&fit=crop&w=800&q=80',
+      label: 'Seismic Impact Perimeter & Rescue Access',
+      tag: 'AERIAL SATELLITE',
+    },
   ];
 
   // Derived counts
@@ -375,40 +391,56 @@ export const IncidentManagementView: React.FC<IncidentManagementViewProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
               {/* Photo Carousel (5 cols) */}
               <div className="md:col-span-5 bg-[#0D1829] rounded-md border border-[#263B50] p-2 flex flex-col justify-between">
-                <div className="relative rounded overflow-hidden h-36 bg-black flex items-center justify-center">
+                <div className="relative rounded overflow-hidden h-36 bg-[#080F1B] border border-[#1E3A5F] flex items-center justify-center">
                   <img
-                    src={evidencePhotos[currentImageIdx]}
-                    alt="Disaster Scene"
+                    src={evidencePhotos[currentImageIdx]?.url}
+                    alt={evidencePhotos[currentImageIdx]?.label}
                     className="w-full h-full object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLElement).style.display = 'none';
+                    }}
                   />
-                  <span className="absolute top-2 right-2 bg-black/75 px-1.5 py-0.5 rounded text-[10px] font-mono text-white">
+                  <div className="absolute top-2 left-2 bg-[#080F1B]/85 border border-[#23B9D6]/40 text-[#23B9D6] px-2 py-0.5 rounded text-[9px] font-mono font-bold tracking-wider">
+                    {evidencePhotos[currentImageIdx]?.tag}
+                  </div>
+                  <span className="absolute top-2 right-2 bg-black/80 px-1.5 py-0.5 rounded text-[10px] font-mono text-white border border-[#263B50]">
                     {currentImageIdx + 1} / {evidencePhotos.length}
                   </span>
+                  <div className="absolute bottom-1 left-2 right-2 bg-gradient-to-t from-black/90 to-transparent p-1.5 rounded-b text-[10px] text-white font-medium truncate">
+                    {evidencePhotos[currentImageIdx]?.label}
+                  </div>
                   <button
                     onClick={() => setCurrentImageIdx((prev) => (prev > 0 ? prev - 1 : evidencePhotos.length - 1))}
-                    className="absolute left-1 top-1/2 -translate-y-1/2 p-1 rounded-full bg-black/60 text-white hover:bg-black"
+                    className="absolute left-1 top-1/2 -translate-y-1/2 p-1 rounded-full bg-black/70 text-white hover:bg-black transition border border-[#263B50]"
                   >
                     <ChevronLeft className="w-3.5 h-3.5" />
                   </button>
                   <button
                     onClick={() => setCurrentImageIdx((prev) => (prev < evidencePhotos.length - 1 ? prev + 1 : 0))}
-                    className="absolute right-1 top-1/2 -translate-y-1/2 p-1 rounded-full bg-black/60 text-white hover:bg-black"
+                    className="absolute right-1 top-1/2 -translate-y-1/2 p-1 rounded-full bg-black/70 text-white hover:bg-black transition border border-[#263B50]"
                   >
                     <ChevronRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
 
-                <div className="flex items-center space-x-1.5 mt-2 overflow-x-auto">
+                <div className="flex items-center space-x-2 mt-2 overflow-x-auto">
                   {evidencePhotos.map((p, i) => (
-                    <img
+                    <div
                       key={i}
-                      src={p}
                       onClick={() => setCurrentImageIdx(i)}
-                      alt="thumb"
-                      className={`w-10 h-8 object-cover rounded cursor-pointer border ${
-                        currentImageIdx === i ? 'border-[#23B9D6]' : 'border-transparent opacity-60'
+                      className={`relative w-12 h-9 rounded overflow-hidden cursor-pointer border shrink-0 transition ${
+                        currentImageIdx === i ? 'border-[#23B9D6] ring-1 ring-[#23B9D6]' : 'border-[#263B50] opacity-60 hover:opacity-100'
                       }`}
-                    />
+                    >
+                      <img
+                        src={p.url}
+                        alt={p.label}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLElement).style.display = 'none';
+                        }}
+                      />
+                    </div>
                   ))}
                 </div>
               </div>

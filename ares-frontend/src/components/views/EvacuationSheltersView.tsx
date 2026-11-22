@@ -252,9 +252,12 @@ export const EvacuationSheltersView: React.FC<EvacuationSheltersViewProps> = ({
             {/* Aerial scene image */}
             <div className="h-24 rounded overflow-hidden bg-black/40 border border-[#263B50] relative">
               <img
-                src="https://images.unsplash.com/photo-1517048676732-d65bc937f952?auto=format&fit=crop&w=500&q=80"
-                alt="Evacuation zone"
+                src="https://images.unsplash.com/photo-1582213782179-e0d53f98f2ca?auto=format&fit=crop&w=600&q=80"
+                alt="Emergency Relief Shelter"
                 className="w-full h-full object-cover"
+                onError={(e) => {
+                  (e.target as HTMLElement).style.display = 'none';
+                }}
               />
             </div>
 
