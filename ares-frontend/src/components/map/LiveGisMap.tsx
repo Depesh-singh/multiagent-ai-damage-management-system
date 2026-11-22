@@ -23,22 +23,23 @@ interface MapProps {
   onSelectIncident?: (inc: any) => void;
 }
 
-type BasemapStyle = 'carto_dark' | 'esri_streets' | 'osm' | 'satellite';
+type BasemapStyle = 'esri_dark' | 'esri_streets' | 'osm' | 'satellite';
 
 const BASEMAP_CONFIGS: Record<BasemapStyle, {
   name: string;
   url: string;
+  labelUrl?: string;
   attribution: string;
   subdomains?: string;
   maxZoom: number;
   className?: string;
 }> = {
-  carto_dark: {
-    name: 'CartoDB Dark Matter',
-    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-    attribution: '&copy; <a href="https://carto.com/">CARTO</a> &copy; OpenStreetMap',
-    subdomains: 'abcd',
-    maxZoom: 20,
+  esri_dark: {
+    name: 'ArcGIS Tactical Dark (Free, No Key)',
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+    labelUrl: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}',
+    attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ',
+    maxZoom: 18,
   },
   esri_streets: {
     name: 'ArcGIS World Streets',
@@ -76,9 +77,10 @@ export const LiveGisMap: React.FC<MapProps> = ({
   const mapInstanceRef = useRef<L.Map | null>(null);
   const layerGroupRef = useRef<L.LayerGroup | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
+  const labelLayerRef = useRef<L.TileLayer | null>(null);
 
-  // Basemap style selector (Defaults to CartoDB Dark Matter - High Contrast Tactical Command Basemap)
-  const [mapStyle, setMapStyle] = useState<BasemapStyle>('carto_dark');
+  // Basemap style selector (Defaults to ArcGIS Tactical Dark - 100% Free - Zero Watermark & No API Key Needed)
+  const [mapStyle, setMapStyle] = useState<BasemapStyle>('esri_dark');
 
   // Layer filter toggles
   const [layers, setLayers] = useState({
@@ -97,8 +99,12 @@ export const LiveGisMap: React.FC<MapProps> = ({
       map.removeLayer(tileLayerRef.current);
       tileLayerRef.current = null;
     }
+    if (labelLayerRef.current) {
+      map.removeLayer(labelLayerRef.current);
+      labelLayerRef.current = null;
+    }
 
-    const cfg = BASEMAP_CONFIGS[style] || BASEMAP_CONFIGS.carto_dark;
+    const cfg = BASEMAP_CONFIGS[style] || BASEMAP_CONFIGS.esri_dark;
     const tileOptions: L.TileLayerOptions = {
       attribution: cfg.attribution,
       maxZoom: cfg.maxZoom,
@@ -112,6 +118,17 @@ export const LiveGisMap: React.FC<MapProps> = ({
     const tile = L.tileLayer(cfg.url, tileOptions);
     tile.addTo(map);
     tileLayerRef.current = tile;
+
+    // Add labels overlay if configured (e.g. for Esri Dark Gray canvas)
+    if (cfg.labelUrl) {
+      const labelTile = L.tileLayer(cfg.labelUrl, {
+        maxZoom: cfg.maxZoom,
+        crossOrigin: true,
+        pane: 'tilePane',
+      });
+      labelTile.addTo(map);
+      labelLayerRef.current = labelTile;
+    }
   };
 
   // Initialize Leaflet map with React 18 StrictMode safety
@@ -180,6 +197,7 @@ export const LiveGisMap: React.FC<MapProps> = ({
       }
       layerGroupRef.current = null;
       tileLayerRef.current = null;
+      labelLayerRef.current = null;
     };
   }, []);
 
@@ -450,7 +468,7 @@ export const LiveGisMap: React.FC<MapProps> = ({
                   : 'text-slate-300 hover:text-white hover:bg-slate-800'
               }`}
             >
-              {style === 'carto_dark'
+              {style === 'esri_dark'
                 ? '🌙 Tactical Dark'
                 : style === 'esri_streets'
                 ? '🛣️ ArcGIS Streets'
