@@ -23,41 +23,52 @@ interface MapProps {
   onSelectIncident?: (inc: any) => void;
 }
 
-type BasemapStyle = 'esri_dark' | 'esri_streets' | 'osm' | 'satellite';
+const CARTO_API_KEY =
+  (import.meta as any).env?.VITE_CARTO_API_KEY ||
+  'eyJhbGciOiJIUzI1NiJ9.eyJhIjoiYWNfemM4M3U2cjgiLCJqdGkiOiI5NzIxNWIwOGQ1ODYyMDVhOGE2MTYzYjdjNWQ3MjBlOSJ9.qlVKkfKfwBHeqlXxLrekoLQdi2re30r5Yx4CXPpA1xM';
+
+type BasemapStyle = 'tactical_dark' | 'disaster_hot' | 'osm_streets' | 'satellite' | 'carto_dark';
 
 const BASEMAP_CONFIGS: Record<BasemapStyle, {
   name: string;
   url: string;
-  labelUrl?: string;
   attribution: string;
   subdomains?: string;
   maxZoom: number;
   className?: string;
 }> = {
-  esri_dark: {
-    name: 'ArcGIS Tactical Dark (Free, No Key)',
-    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
-    labelUrl: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}',
-    attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ',
-    maxZoom: 18,
+  tactical_dark: {
+    name: 'Tactical Dark (High-Contrast)',
+    url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    maxZoom: 19,
+    className: 'tactical-dark-tile',
   },
-  esri_streets: {
-    name: 'ArcGIS World Streets',
-    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
-    attribution: 'Tiles &copy; Esri &mdash; Source: Esri, DeLorme, NAVTEQ',
-    maxZoom: 18,
+  disaster_hot: {
+    name: 'Disaster HOT (Emergency Map)',
+    url: 'https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png',
+    attribution: '&copy; <a href="https://www.hotosm.org/">Humanitarian OSM</a> &copy; OpenStreetMap',
+    subdomains: 'abc',
+    maxZoom: 19,
   },
-  osm: {
-    name: 'OpenStreetMap Standard',
+  osm_streets: {
+    name: 'Standard OSM Streets',
     url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     maxZoom: 19,
   },
   satellite: {
-    name: 'Esri Satellite Imagery',
+    name: 'World Satellite Imagery',
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
     attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS',
     maxZoom: 18,
+  },
+  carto_dark: {
+    name: 'CartoDB Dark Matter',
+    url: `https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png?api_key=${CARTO_API_KEY}`,
+    attribution: '&copy; <a href="https://carto.com/">CARTO</a> &copy; OpenStreetMap',
+    subdomains: 'abcd',
+    maxZoom: 19,
   },
 };
 
@@ -79,8 +90,8 @@ export const LiveGisMap: React.FC<MapProps> = ({
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   const labelLayerRef = useRef<L.TileLayer | null>(null);
 
-  // Basemap style selector (Defaults to ArcGIS Tactical Dark - 100% Free - Zero Watermark & No API Key Needed)
-  const [mapStyle, setMapStyle] = useState<BasemapStyle>('esri_dark');
+  // Basemap style selector (Defaults to 100% Reliable Tactical Dark)
+  const [mapStyle, setMapStyle] = useState<BasemapStyle>('tactical_dark');
 
   // Layer filter toggles
   const [layers, setLayers] = useState({
@@ -104,11 +115,10 @@ export const LiveGisMap: React.FC<MapProps> = ({
       labelLayerRef.current = null;
     }
 
-    const cfg = BASEMAP_CONFIGS[style] || BASEMAP_CONFIGS.esri_dark;
+    const cfg = BASEMAP_CONFIGS[style] || BASEMAP_CONFIGS.tactical_dark;
     const tileOptions: L.TileLayerOptions = {
       attribution: cfg.attribution,
       maxZoom: cfg.maxZoom,
-      crossOrigin: true,
       className: cfg.className,
     };
     if (cfg.subdomains) {
@@ -116,19 +126,19 @@ export const LiveGisMap: React.FC<MapProps> = ({
     }
 
     const tile = L.tileLayer(cfg.url, tileOptions);
+
+    // Automatic fallback: if an external tile fails or gets blocked by client ISP/adblocker, fallback to OSM
+    tile.on('tileerror', (event: any) => {
+      if (event.tile && event.coords) {
+        const fallback = `https://tile.openstreetmap.org/${event.coords.z}/${event.coords.x}/${event.coords.y}.png`;
+        if (event.tile.src !== fallback) {
+          event.tile.src = fallback;
+        }
+      }
+    });
+
     tile.addTo(map);
     tileLayerRef.current = tile;
-
-    // Add labels overlay if configured (e.g. for Esri Dark Gray canvas)
-    if (cfg.labelUrl) {
-      const labelTile = L.tileLayer(cfg.labelUrl, {
-        maxZoom: cfg.maxZoom,
-        crossOrigin: true,
-        pane: 'tilePane',
-      });
-      labelTile.addTo(map);
-      labelLayerRef.current = labelTile;
-    }
   };
 
   // Initialize Leaflet map with React 18 StrictMode safety
@@ -468,13 +478,15 @@ export const LiveGisMap: React.FC<MapProps> = ({
                   : 'text-slate-300 hover:text-white hover:bg-slate-800'
               }`}
             >
-              {style === 'esri_dark'
+              {style === 'tactical_dark'
                 ? '🌙 Tactical Dark'
-                : style === 'esri_streets'
-                ? '🛣️ ArcGIS Streets'
-                : style === 'osm'
+                : style === 'disaster_hot'
+                ? '🚨 Disaster HOT'
+                : style === 'osm_streets'
                 ? '🗺️ OSM Streets'
-                : '🛰️ Satellite'}
+                : style === 'satellite'
+                ? '🛰️ Satellite'
+                : '🌃 CartoDB Dark'}
             </button>
           ))}
         </div>

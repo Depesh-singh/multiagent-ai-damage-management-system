@@ -91,6 +91,11 @@ body {
   opacity: 1 !important;
 }
 
+/* Hide broken image placeholders gracefully */
+.leaflet-tile[src=""] {
+  display: none !important;
+}
+
 /* Tactical Dark Filter for OpenStreetMap tiles */
 .tactical-dark-tile {
   filter: invert(100%) hue-rotate(180deg) brightness(85%) contrast(90%) !important;
