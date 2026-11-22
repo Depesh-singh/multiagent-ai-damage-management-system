@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import uuid
 from datetime import datetime, timezone
 from typing import List, Optional
@@ -11,6 +12,7 @@ from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.orchestrator import CentralOrchestrator
+from app.services.n8n import n8n_service
 from app.core.database import get_db
 from app.core.utils import as_uuid
 from app.models.agent import AuditLog
@@ -100,6 +102,22 @@ async def report_incident(req: IncidentCreate, db: AsyncSession = Depends(get_db
 
     await db.commit()
     await db.refresh(incident)
+
+    # Real-time multi-agent dispatch via n8n
+    asyncio.create_task(
+        n8n_service.dispatch_emergency(
+            incident_id=str(inc_uuid),
+            disaster_type="EARTHQUAKE" if "quake" in (req.address or "").lower() else "FLOOD",
+            latitude=req.location_lat,
+            longitude=req.location_lng,
+            location_name=req.address or f"Incident at {req.location_lat}, {req.location_lng}",
+            casualty_estimate=req.casualty_estimate or 5,
+            description=req.description or "SOS Emergency Alert",
+            reporter_source=req.source or "CITIZEN_SOS",
+            simulated=False,
+        )
+    )
+
     return incident
 
 
@@ -175,6 +193,16 @@ async def update_incident_status(
 
     await db.commit()
     await db.refresh(incident)
+
+    # Trigger n8n reassessment on status change
+    asyncio.create_task(
+        n8n_service.trigger_event(
+            "INCIDENT_STATUS_CHANGED",
+            str(incident.id),
+            {"status": req.status, "notes": req.decision_notes},
+        )
+    )
+
     return incident
 
 
@@ -186,6 +214,21 @@ async def trigger_agent_response(incident_id: str, db: AsyncSession = Depends(ge
     if not incident:
         raise HTTPException(status_code=404, detail="Incident not found")
 
+    # Real-time dispatch through n8n Multi-Agent Workflow
+    n8n_task = asyncio.create_task(
+        n8n_service.dispatch_emergency(
+            incident_id=str(incident.id),
+            disaster_type="EARTHQUAKE" if "quake" in (incident.address or "").lower() else "FLOOD",
+            latitude=incident.location_lat,
+            longitude=incident.location_lng,
+            location_name=incident.address or f"Incident at {incident.location_lat}, {incident.location_lng}",
+            casualty_estimate=incident.casualty_estimate or 10,
+            description=incident.description or "Live emergency requiring multi-agent response.",
+            reporter_source=incident.source or "ERSS_112",
+            simulated=False,
+        )
+    )
+
     plan = await orchestrator.run_disaster_response(
         str(incident.id),
         trigger_payload={
@@ -196,6 +239,13 @@ async def trigger_agent_response(incident_id: str, db: AsyncSession = Depends(ge
             "address": incident.address,
         }
     )
+
+    try:
+        n8n_res = await asyncio.wait_for(n8n_task, timeout=6.0)
+        plan["n8n_orchestration"] = n8n_res
+    except Exception as exc:
+        plan["n8n_orchestration"] = {"status": "background_processing", "detail": str(exc)}
+
     return plan
 
 

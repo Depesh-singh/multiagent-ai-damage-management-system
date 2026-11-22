@@ -26,6 +26,7 @@ from app.routers import (
     shelters,
     simulation,
     websocket,
+    n8n,
 )
 
 
@@ -68,6 +69,7 @@ app.include_router(shelters.router, prefix=API_PREFIX)
 app.include_router(reports.router, prefix=API_PREFIX)
 app.include_router(simulation.router, prefix=API_PREFIX)
 app.include_router(websocket.router, prefix=API_PREFIX)
+app.include_router(n8n.router, prefix=API_PREFIX)
 
 # Also expose without prefix for convenience
 app.include_router(auth.router)
@@ -82,6 +84,7 @@ app.include_router(shelters.router)
 app.include_router(reports.router)
 app.include_router(simulation.router)
 app.include_router(websocket.router)
+app.include_router(n8n.router)
 
 
 from datetime import datetime, timezone

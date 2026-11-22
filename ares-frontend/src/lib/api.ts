@@ -330,4 +330,32 @@ export const aresApi = {
       body: JSON.stringify({ scenario_type: scenarioType, target_entity: target }),
     }),
   triggerEarthquakeDemo: () => fetchApi<any>('/simulation/demo/earthquake', { method: 'POST' }),
+
+  // n8n Multi-Agent & Real-Time Feeds
+  getN8nStatus: () =>
+    fetchApi<{
+      connected: boolean;
+      port: number;
+      workflow_name: string;
+      active: boolean;
+      webhook_url: string;
+    }>('/n8n/status'),
+  dispatchToN8n: (incidentId: string) =>
+    fetchApi<any>(`/n8n/dispatch/${incidentId}`, { method: 'POST' }),
+  syncRealtimeDisasterFeed: (autoDispatch = true) =>
+    fetchApi<any>(`/n8n/feed/sync?auto_dispatch=${autoDispatch}`, { method: 'POST' }),
+  getRealtimeEarthquakes: (minMag = 2.5, limit = 15) =>
+    fetchApi<any[]>(`/n8n/earthquakes?min_mag=${minMag}&limit=${limit}`),
+  getRealtimeWeather: (lat: number, lng: number) =>
+    fetchApi<any>(`/n8n/weather?lat=${lat}&lng=${lng}`),
+  getRealtimeRoute: (origin_lat: number, origin_lng: number, dest_lat: number, dest_lng: number) =>
+    fetchApi<any>('/n8n/route', {
+      method: 'POST',
+      body: JSON.stringify({ origin_lat, origin_lng, dest_lat, dest_lng }),
+    }),
+  triggerN8nEvent: (eventType: string, incidentId: string, details?: any) =>
+    fetchApi<any>('/n8n/event', {
+      method: 'POST',
+      body: JSON.stringify({ event_type: eventType, incident_id: incidentId, details }),
+    }),
 };
