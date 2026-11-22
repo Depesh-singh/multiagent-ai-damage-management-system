@@ -429,12 +429,10 @@ export const LiveGisMap: React.FC<MapProps> = ({
         marker.bindPopup(`
           <div class="p-2 text-xs">
             <div class="flex items-center justify-between mb-1">
-              <span class="font-bold text-red-400 text-sm">${inc.source === 'USGS_REALTIME' ? 'REAL-TIME SEISMIC' : 'LEVEL 4 DISASTER'}</span>
+              <span class="font-bold text-red-400 text-sm">LEVEL 4 DISASTER</span>
               <span class="bg-red-950 text-red-300 px-1.5 py-0.5 rounded text-[10px] border border-red-800">${inc.status}</span>
             </div>
             <div class="font-semibold text-white mb-1">${inc.address}</div>
-            <div class="text-[11px] text-amber-300 font-mono mb-1">📍 Lat: ${Number(inc.location_lat).toFixed(4)}, Lng: ${Number(inc.location_lng).toFixed(4)}</div>
-            ${inc.source === 'USGS_REALTIME' ? '<div class="text-[10px] text-cyan-300 bg-cyan-950/70 p-1.5 rounded border border-cyan-800/80 mb-2 leading-relaxed">🌊 <b>Offshore Event:</b> Epicenter is in open maritime waters. Switch to <i>Disaster HOT</i> or click <i>Focus Command HQ</i> to view land assets.</div>' : ''}
             <div class="text-slate-300">Estimated Casualties: <b class="text-red-400 font-mono">${inc.casualty_estimate}</b></div>
             <div class="text-[11px] text-slate-400 mb-2">Source: ${inc.source}</div>
             <button id="btn-select-inc-${inc.id}" class="w-full bg-[#23B9D6] hover:bg-[#1fa1bb] text-black font-semibold py-1 px-2 rounded text-[11px] mt-1 transition">
@@ -465,9 +463,7 @@ export const LiveGisMap: React.FC<MapProps> = ({
           selectedIncident.location_lat < 25 &&
           selectedIncident.location_lng > 86 &&
           selectedIncident.location_lng < 90;
-        // For local city incidents, zoom in to 13 for street-level tactical view
-        // For global/offshore seismic events, zoom to 5 so surrounding landmass & coasts are clearly visible
-        const targetZoom = isLocalKolkata ? 13 : 5;
+        const targetZoom = isLocalKolkata ? 13 : 7;
         map.flyTo(
           [selectedIncident.location_lat, selectedIncident.location_lng],
           targetZoom,
@@ -488,56 +484,29 @@ export const LiveGisMap: React.FC<MapProps> = ({
 
       {/* Top Map Floating Header: Basemap Selectors + Layers */}
       <div className="absolute top-2.5 left-2.5 right-2.5 z-[1000] flex flex-wrap items-center justify-between gap-2 pointer-events-none">
-        {/* Basemap Style Selector + Nav Helpers */}
-        <div className="flex flex-wrap items-center gap-1.5 pointer-events-auto">
-          <div className="bg-[#131F31]/95 backdrop-blur border border-[#1E3A5F] rounded-md p-1 shadow-xl flex items-center space-x-1 text-xs">
-            {(Object.keys(BASEMAP_CONFIGS) as BasemapStyle[]).map((style) => (
-              <button
-                key={style}
-                onClick={() => setMapStyle(style)}
-                className={`px-2 py-1 rounded text-[11px] font-medium transition ${
-                  mapStyle === style
-                    ? 'bg-[#23B9D6] text-black font-semibold shadow'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-800'
-                }`}
-              >
-                {style === 'tactical_dark'
-                  ? '🌙 Tactical Dark'
-                  : style === 'disaster_hot'
-                  ? '🚨 Disaster HOT'
-                  : style === 'osm_streets'
-                  ? '🗺️ OSM Streets'
-                  : style === 'satellite'
-                  ? '🛰️ Satellite'
-                  : '🌃 CartoDB Dark'}
-              </button>
-            ))}
-          </div>
-
-          <div className="bg-[#131F31]/95 backdrop-blur border border-[#1E3A5F] rounded-md p-1 shadow-xl flex items-center space-x-1 text-xs">
+        {/* Basemap Style Selector */}
+        <div className="bg-[#131F31]/95 backdrop-blur border border-[#1E3A5F] rounded-md p-1 shadow-xl flex items-center space-x-1 text-xs pointer-events-auto">
+          {(Object.keys(BASEMAP_CONFIGS) as BasemapStyle[]).map((style) => (
             <button
-              onClick={() => {
-                if (mapInstanceRef.current) {
-                  mapInstanceRef.current.flyTo([22.5620, 88.3639], 13, { duration: 0.8 });
-                }
-              }}
-              className="px-2.5 py-1 rounded text-[11px] font-semibold bg-[#172B40] text-cyan-300 hover:bg-[#23B9D6] hover:text-black border border-cyan-800/60 transition shadow flex items-center space-x-1"
-              title="Return camera to Command HQ, Hospitals, and Fleet"
+              key={style}
+              onClick={() => setMapStyle(style)}
+              className={`px-2 py-1 rounded text-[11px] font-medium transition ${
+                mapStyle === style
+                  ? 'bg-[#23B9D6] text-black font-semibold shadow'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800'
+              }`}
             >
-              <span>🎯 Focus Command HQ</span>
+              {style === 'tactical_dark'
+                ? '🌙 Tactical Dark'
+                : style === 'disaster_hot'
+                ? '🚨 Disaster HOT'
+                : style === 'osm_streets'
+                ? '🗺️ OSM Streets'
+                : style === 'satellite'
+                ? '🛰️ Satellite'
+                : '🌃 CartoDB Dark'}
             </button>
-            <button
-              onClick={() => {
-                if (mapInstanceRef.current) {
-                  mapInstanceRef.current.flyTo([15, 95], 4, { duration: 0.8 });
-                }
-              }}
-              className="px-2.5 py-1 rounded text-[11px] font-medium bg-[#172B40] text-slate-300 hover:text-white hover:bg-slate-700 border border-slate-700 transition shadow"
-              title="Zoom out to Global Overview"
-            >
-              <span>🌐 Global View</span>
-            </button>
-          </div>
+          ))}
         </div>
 
         {/* Layer Controls Bar */}

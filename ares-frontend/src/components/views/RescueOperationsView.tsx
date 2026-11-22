@@ -24,13 +24,13 @@ import { Incident, RescueTeam } from '@/lib/api';
 
 interface RescueOperationsViewProps {
   rescueTeams: RescueTeam[];
-  incidents: Incident[];
+  incidents?: Incident[];
   onRefresh?: () => void;
 }
 
 export const RescueOperationsView: React.FC<RescueOperationsViewProps> = ({
   rescueTeams,
-  incidents,
+  incidents = [],
   onRefresh,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');

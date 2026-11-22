@@ -81,7 +81,10 @@ export const MedicalLogisticsView: React.FC = () => {
     { id: '8', item_name: 'Blood Units (B+ / O-)', category: 'Blood Bank', current_stock: 186, minimum_threshold: 300, unit: 'units' },
   ];
 
-  const totalStock = sampleInventory.reduce((acc, cur) => acc + cur.current_stock, 0);
+  const totalStock = sampleInventory.reduce(
+    (acc, cur) => acc + (cur.current_stock ?? (cur as any).quantity_available ?? (cur as any).available ?? 0),
+    0
+  );
 
   const clusteredGroups = [
     { label: 'IV Fluids', valA: 4200, valB: 1800 },
@@ -194,21 +197,23 @@ export const MedicalLogisticsView: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#263B50]/40 text-white">
-                  {sampleInventory.map((item) => {
+                  {sampleInventory.map((item, idx) => {
+                    const stock = item.current_stock ?? (item as any).quantity_available ?? (item as any).available ?? 100;
+                    const minThreshold = item.minimum_threshold ?? 500;
                     const status =
-                      item.current_stock < item.minimum_threshold / 2
+                      stock < minThreshold / 2
                         ? 'Critical'
-                        : item.current_stock < item.minimum_threshold
+                        : stock < minThreshold
                         ? 'Low'
                         : 'In Stock';
 
                     return (
-                      <tr key={item.id}>
+                      <tr key={item.id || idx}>
                         <td className="py-1.5 truncate max-w-[130px] font-sans font-medium">
                           {item.item_name}
                         </td>
                         <td className="py-1.5 text-right font-bold">
-                          {item.current_stock.toLocaleString()}
+                          {Number(stock).toLocaleString()}
                         </td>
                         <td className="py-1.5 text-right">
                           <StatusBadge

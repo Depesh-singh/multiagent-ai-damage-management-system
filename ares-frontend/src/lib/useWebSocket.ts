@@ -9,7 +9,20 @@ export interface WebSocketMessage {
   timestamp?: string;
 }
 
-export function useAresWebSocket(onEvent?: (msg: WebSocketMessage) => void) {
+export type WebSocketHandlers =
+  | ((msg: WebSocketMessage) => void)
+  | {
+      onIncidentCreated?: (data?: any) => void;
+      onIncidentUpdated?: (data?: any) => void;
+      onAgentRunCompleted?: (data?: any) => void;
+      onApprovalCreated?: (data?: any) => void;
+      onApprovalDecided?: (data?: any) => void;
+      onDispatchUpdated?: (data?: any) => void;
+      onEvent?: (msg: WebSocketMessage) => void;
+      [key: string]: any;
+    };
+
+export function useAresWebSocket(onEvent?: WebSocketHandlers) {
   const [isConnected, setIsConnected] = useState(false);
   const [lastMessage, setLastMessage] = useState<WebSocketMessage | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
@@ -40,7 +53,29 @@ export function useAresWebSocket(onEvent?: (msg: WebSocketMessage) => void) {
           try {
             const data: WebSocketMessage = JSON.parse(event.data);
             setLastMessage(data);
-            if (onEvent) onEvent(data);
+            if (onEvent) {
+              if (typeof onEvent === 'function') {
+                onEvent(data);
+              } else if (typeof onEvent === 'object') {
+                const t = (data.type || '').toUpperCase();
+                if ((t === 'INCIDENT_CREATED' || t === 'INCIDENT') && onEvent.onIncidentCreated) {
+                  onEvent.onIncidentCreated(data.data);
+                } else if (t === 'INCIDENT_UPDATED' && onEvent.onIncidentUpdated) {
+                  onEvent.onIncidentUpdated(data.data);
+                } else if (t === 'AGENT_RUN_COMPLETED' && onEvent.onAgentRunCompleted) {
+                  onEvent.onAgentRunCompleted(data.data);
+                } else if (t === 'APPROVAL_CREATED' && onEvent.onApprovalCreated) {
+                  onEvent.onApprovalCreated(data.data);
+                } else if (t === 'APPROVAL_DECIDED' && onEvent.onApprovalDecided) {
+                  onEvent.onApprovalDecided(data.data);
+                } else if (t === 'DISPATCH_UPDATED' && onEvent.onDispatchUpdated) {
+                  onEvent.onDispatchUpdated(data.data);
+                }
+                if (typeof onEvent.onEvent === 'function') {
+                  onEvent.onEvent(data);
+                }
+              }
+            }
           } catch (e) {
             console.warn('[SAVE WebSocket] Parse error:', e);
           }

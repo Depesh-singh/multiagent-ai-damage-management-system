@@ -440,7 +440,11 @@ export const App: React.FC = () => {
 
           {/* SCREEN 09: RESCUE OPERATIONS */}
           {activeTab === 'rescue' && (
-            <RescueOperationsView rescueTeams={rescueTeams} onRefresh={loadAllData} />
+            <RescueOperationsView
+              rescueTeams={rescueTeams}
+              incidents={incidents}
+              onRefresh={loadAllData}
+            />
           )}
 
           {/* SCREEN 10: MEDICAL LOGISTICS */}
@@ -450,7 +454,6 @@ export const App: React.FC = () => {
           {activeTab === 'shelters' && (
             <EvacuationSheltersView
               shelters={shelters}
-              incidents={incidents}
               onRefresh={loadAllData}
             />
           )}

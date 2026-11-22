@@ -4,11 +4,14 @@ import React from 'react';
 // 1. KPI CARD
 // ==========================================
 export interface KpiCardProps {
-  title: string;
+  title?: string;
+  label?: string;
   value: string | number;
   change?: string;
   changeType?: 'increase' | 'decrease' | 'neutral';
   subtext?: string;
+  subValue?: string;
+  status?: string;
   icon?: React.ReactNode;
   iconBg?: string;
   borderColor?: string;
@@ -17,15 +20,21 @@ export interface KpiCardProps {
 
 export const KpiCard: React.FC<KpiCardProps> = ({
   title,
+  label,
   value,
   change,
   changeType = 'increase',
   subtext,
+  subValue,
+  status,
   icon,
   iconBg = 'bg-[#172B40]',
   borderColor = 'border-[#263B50]',
   onClick,
 }) => {
+  const displayTitle = title || label || '';
+  const displaySub = subtext || subValue || status || '';
+
   return (
     <div
       onClick={onClick}
@@ -35,7 +44,7 @@ export const KpiCard: React.FC<KpiCardProps> = ({
     >
       <div className="space-y-1.5 min-w-0">
         <div className="text-xs font-semibold text-[#94A3B8] tracking-wider uppercase truncate">
-          {title}
+          {displayTitle}
         </div>
         <div className="flex items-baseline space-x-2">
           <span className="text-2xl lg:text-3xl font-extrabold font-mono text-white tracking-tight">
@@ -55,9 +64,9 @@ export const KpiCard: React.FC<KpiCardProps> = ({
             </span>
           )}
         </div>
-        {subtext && (
+        {displaySub && (
           <div className="text-[11px] text-[#94A3B8] truncate font-mono">
-            {subtext}
+            {displaySub}
           </div>
         )}
       </div>
@@ -199,8 +208,8 @@ export const RadialGauge: React.FC<RadialGaugeProps> = ({
 }) => {
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
-  const clamped = Math.min(100, Math.max(0, percentage));
-  const strokeDashoffset = circumference - (clamped / 100) * circumference;
+  const clamped = isNaN(percentage) ? 0 : Math.min(100, Math.max(0, percentage));
+  const strokeDashoffset = isNaN(clamped) ? circumference : circumference - (clamped / 100) * circumference;
 
   return (
     <div className="flex flex-col items-center text-center">
@@ -222,7 +231,7 @@ export const RadialGauge: React.FC<RadialGaugeProps> = ({
             stroke={color}
             strokeWidth={strokeWidth}
             strokeDasharray={circumference}
-            strokeDashoffset={strokeDashoffset}
+            strokeDashoffset={isNaN(strokeDashoffset) ? 0 : strokeDashoffset}
             strokeLinecap="round"
             className="transition-all duration-700 ease-out"
           />
@@ -246,7 +255,9 @@ export interface LineChartPoint {
 }
 
 export interface LineChartProps {
-  data: LineChartPoint[];
+  data: (LineChartPoint | number)[];
+  labels?: string[];
+  title?: string;
   color?: string;
   height?: number;
   showPoints?: boolean;
@@ -255,6 +266,7 @@ export interface LineChartProps {
 
 export const LineChart: React.FC<LineChartProps> = ({
   data,
+  labels,
   color = '#23B9D6',
   height = 100,
   showPoints = true,
@@ -262,8 +274,16 @@ export const LineChart: React.FC<LineChartProps> = ({
 }) => {
   if (!data || data.length === 0) return null;
 
-  const maxY = Math.max(...data.map((d) => d.y), 1);
-  const minY = Math.min(...data.map((d) => d.y), 0);
+  const normalizedPoints: LineChartPoint[] = data.map((d, i) => {
+    if (typeof d === 'number') {
+      return { x: labels?.[i] || `${i}`, y: isNaN(d) ? 0 : d };
+    }
+    const safeY = typeof d?.y === 'number' && !isNaN(d.y) ? d.y : 0;
+    return { x: d?.x || labels?.[i] || `${i}`, y: safeY };
+  });
+
+  const maxY = Math.max(...normalizedPoints.map((d) => d.y), 1);
+  const minY = Math.min(...normalizedPoints.map((d) => d.y), 0);
   const range = maxY - minY || 1;
 
   const width = 400; // virtual SVG width
@@ -272,17 +292,19 @@ export const LineChart: React.FC<LineChartProps> = ({
   const usableWidth = width - paddingX * 2;
   const usableHeight = height - paddingY * 2;
 
-  const points = data.map((d, i) => {
-    const x = paddingX + (i / (data.length - 1)) * usableWidth;
+  const points = normalizedPoints.map((d, i) => {
+    const x = paddingX + (i / Math.max(1, normalizedPoints.length - 1)) * usableWidth;
     const y = height - paddingY - ((d.y - minY) / range) * usableHeight;
-    return { x, y, raw: d };
+    return { x: isNaN(x) ? 0 : x, y: isNaN(y) ? 0 : y, raw: d };
   });
 
   const pathD = points.reduce((acc, pt, i) => {
     return i === 0 ? `M ${pt.x} ${pt.y}` : `${acc} L ${pt.x} ${pt.y}`;
   }, '');
 
-  const areaD = `${pathD} L ${points[points.length - 1].x} ${height - paddingY} L ${points[0].x} ${height - paddingY} Z`;
+  const lastPt = points[points.length - 1] || { x: width - paddingX, y: height - paddingY };
+  const firstPt = points[0] || { x: paddingX, y: height - paddingY };
+  const areaD = `${pathD} L ${lastPt.x} ${height - paddingY} L ${firstPt.x} ${height - paddingY} Z`;
 
   return (
     <div className="w-full">
@@ -323,7 +345,7 @@ export const LineChart: React.FC<LineChartProps> = ({
 
       {/* X-Axis labels */}
       <div className="flex justify-between items-center text-[9px] font-mono text-[#64748B] mt-1.5 px-2">
-        {data.map((d, i) => (
+        {normalizedPoints.map((d, i) => (
           <span key={i}>{d.x}</span>
         ))}
       </div>
@@ -341,7 +363,10 @@ export interface BarGroup {
 }
 
 export interface ClusteredBarChartProps {
-  groups: BarGroup[];
+  groups?: BarGroup[];
+  labels?: string[];
+  seriesA?: { name?: string; data: number[]; color?: string };
+  seriesB?: { name?: string; data: number[]; color?: string };
   labelA?: string;
   labelB?: string;
   colorA?: string;
@@ -351,14 +376,31 @@ export interface ClusteredBarChartProps {
 
 export const ClusteredBarChart: React.FC<ClusteredBarChartProps> = ({
   groups,
+  labels,
+  seriesA,
+  seriesB,
   labelA = 'In Stock',
   labelB = 'Requested',
   colorA = '#23B9D6',
   colorB = '#3B82F6',
   height = 140,
 }) => {
+  const resolvedGroups: BarGroup[] =
+    groups && groups.length > 0
+      ? groups
+      : (labels || []).map((l, i) => ({
+          label: l,
+          valA: seriesA?.data?.[i] ?? 0,
+          valB: seriesB?.data?.[i] ?? 0,
+        }));
+
+  const actualColorA = seriesA?.color || colorA;
+  const actualColorB = seriesB?.color || colorB;
+  const actualLabelA = seriesA?.name || labelA;
+  const actualLabelB = seriesB?.name || labelB;
+
   const maxVal = Math.max(
-    ...groups.map((g) => Math.max(g.valA, g.valB)),
+    ...resolvedGroups.map((g) => Math.max(g.valA || 0, g.valB || 0)),
     10
   );
 
@@ -366,32 +408,32 @@ export const ClusteredBarChart: React.FC<ClusteredBarChartProps> = ({
     <div className="w-full space-y-2">
       <div className="flex items-center justify-end space-x-4 text-[10px]">
         <div className="flex items-center space-x-1.5">
-          <span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: colorA }}></span>
-          <span className="text-[#94A3B8]">{labelA}</span>
+          <span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: actualColorA }}></span>
+          <span className="text-[#94A3B8]">{actualLabelA}</span>
         </div>
         <div className="flex items-center space-x-1.5">
-          <span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: colorB }}></span>
-          <span className="text-[#94A3B8]">{labelB}</span>
+          <span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: actualColorB }}></span>
+          <span className="text-[#94A3B8]">{actualLabelB}</span>
         </div>
       </div>
 
       <div className="flex items-end justify-between gap-2 pt-2 border-b border-[#263B50]" style={{ height }}>
-        {groups.map((g, i) => {
-          const hA = (g.valA / maxVal) * (height - 25);
-          const hB = (g.valB / maxVal) * (height - 25);
+        {resolvedGroups.map((g, i) => {
+          const hA = ((g.valA || 0) / maxVal) * (height - 25);
+          const hB = ((g.valB || 0) / maxVal) * (height - 25);
 
           return (
             <div key={i} className="flex-1 flex flex-col items-center gap-1 h-full justify-end">
               <div className="flex items-end gap-1 w-full justify-center">
                 <div
                   className="w-3 sm:w-4 rounded-t transition-all duration-500"
-                  style={{ height: `${hA}px`, backgroundColor: colorA }}
-                  title={`${labelA}: ${g.valA}`}
+                  style={{ height: `${isNaN(hA) ? 0 : hA}px`, backgroundColor: actualColorA }}
+                  title={`${actualLabelA}: ${g.valA}`}
                 ></div>
                 <div
                   className="w-3 sm:w-4 rounded-t transition-all duration-500"
-                  style={{ height: `${hB}px`, backgroundColor: colorB }}
-                  title={`${labelB}: ${g.valB}`}
+                  style={{ height: `${isNaN(hB) ? 0 : hB}px`, backgroundColor: actualColorB }}
+                  title={`${actualLabelB}: ${g.valB}`}
                 ></div>
               </div>
               <span className="text-[9px] font-mono text-[#94A3B8] truncate max-w-[55px] text-center">
@@ -410,7 +452,8 @@ export const ClusteredBarChart: React.FC<ClusteredBarChartProps> = ({
 // ==========================================
 export interface ProgressBarProps {
   label: string;
-  value: number;
+  value?: number;
+  current?: number;
   total?: number;
   percentage?: number;
   color?: string;
@@ -420,30 +463,32 @@ export interface ProgressBarProps {
 export const ProgressBar: React.FC<ProgressBarProps> = ({
   label,
   value,
+  current,
   total,
   percentage,
   color = '#23B9D6',
   showPercent = true,
 }) => {
+  const actualVal = value !== undefined ? value : (current !== undefined ? current : 0);
   const pct =
     percentage !== undefined
       ? percentage
       : total && total > 0
-      ? Math.round((value / total) * 100)
-      : Math.min(100, value);
+      ? Math.round((actualVal / total) * 100)
+      : Math.min(100, actualVal);
 
   return (
     <div className="space-y-1">
       <div className="flex justify-between items-center text-xs">
         <span className="text-[#94A3B8] text-[11px] font-medium">{label}</span>
         <span className="font-mono text-white text-[11px] font-bold">
-          {total ? `${value} / ${total}` : `${value}`} {showPercent && `(${pct}%)`}
+          {total ? `${actualVal} / ${total}` : `${actualVal}`} {showPercent && `(${pct}%)`}
         </span>
       </div>
       <div className="w-full h-2 rounded-full bg-[#172B40] overflow-hidden border border-[#263B50]/60">
         <div
           className="h-full rounded-full transition-all duration-500 ease-out"
-          style={{ width: `${Math.min(100, Math.max(0, pct))}%`, backgroundColor: color }}
+          style={{ width: `${Math.min(100, Math.max(0, isNaN(pct) ? 0 : pct))}%`, backgroundColor: color }}
         />
       </div>
     </div>
@@ -457,6 +502,7 @@ export interface StatusBadgeProps {
   status: string;
   variant?: 'critical' | 'warning' | 'safe' | 'info' | 'cyan' | 'neutral';
   pulse?: boolean;
+  size?: string;
 }
 
 export const StatusBadge: React.FC<StatusBadgeProps> = ({

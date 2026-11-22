@@ -20,6 +20,7 @@ import {
   Search,
   Send,
   Shield,
+  Users,
   X,
   Zap,
 } from 'lucide-react';
