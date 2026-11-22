@@ -4,6 +4,7 @@ import {
   Calendar,
   CheckCircle2,
   Clock,
+  Globe,
   LogOut,
   RefreshCw,
   Shield,
@@ -18,8 +19,11 @@ interface TopBarProps {
   title: string;
   subtitle?: string;
   dbConnected: boolean;
+  n8nConnected?: boolean;
   isRefreshing?: boolean;
   onRefresh?: () => void;
+  onSyncLiveFeed?: () => void;
+  isSyncingFeed?: boolean;
   currentUser?: UserProfile | null;
   onOpenAuthModal?: () => void;
   onLogout?: () => void;
@@ -30,8 +34,11 @@ export const TopBar: React.FC<TopBarProps> = ({
   title,
   subtitle,
   dbConnected,
+  n8nConnected = true,
   isRefreshing = false,
   onRefresh,
+  onSyncLiveFeed,
+  isSyncingFeed = false,
   currentUser,
   onOpenAuthModal,
   onLogout,
@@ -80,6 +87,40 @@ export const TopBar: React.FC<TopBarProps> = ({
 
       {/* Right Controls matching the 13 Visual References */}
       <div className="flex items-center space-x-3 shrink-0">
+        {/* n8n Multi-Agent Engine Badge */}
+        <div
+          className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border font-mono ${
+            n8nConnected
+              ? 'bg-amber-950/50 text-[#F59E0B] border-amber-800/80 shadow-[0_0_10px_rgba(245,158,11,0.2)]'
+              : 'bg-slate-900/60 text-[#64748B] border-slate-700/60'
+          }`}
+          title={
+            n8nConnected
+              ? 'n8n Multi-Agent Workflow Engine Active on Port 5678 (v2 Orchestrator)'
+              : 'n8n Engine Standby'
+          }
+        >
+          <Zap className={`w-3.5 h-3.5 ${n8nConnected ? 'text-[#F59E0B] animate-pulse' : 'text-[#64748B]'}`} />
+          <span className="hidden sm:inline font-bold">
+            {n8nConnected ? 'n8n Active (5678)' : 'n8n Standby'}
+          </span>
+        </div>
+
+        {/* Live Real-Time Feed Ingestion (USGS Live Earthquakes) */}
+        {onSyncLiveFeed && (
+          <button
+            onClick={onSyncLiveFeed}
+            disabled={isSyncingFeed}
+            className="flex items-center space-x-1.5 px-3 py-1 rounded-md bg-gradient-to-r from-cyan-950 to-blue-950 hover:from-cyan-900 hover:to-blue-900 text-cyan-300 border border-cyan-700/60 text-[11px] font-semibold transition shadow-sm disabled:opacity-50"
+            title="Fetch Real-Time USGS Earthquakes & Environmental Disasters (Zero Mock Data)"
+          >
+            <Globe className={`w-3.5 h-3.5 ${isSyncingFeed ? 'animate-spin text-cyan-400' : 'text-cyan-300'}`} />
+            <span className="hidden md:inline">
+              {isSyncingFeed ? 'Syncing Real-Time...' : '🌐 Real-Time Live Feed'}
+            </span>
+          </button>
+        )}
+
         {/* Backend Connection Health Badge */}
         <div
           className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border font-mono ${

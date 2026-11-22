@@ -24,6 +24,15 @@ class Settings(BaseSettings):
     # ── Redis ──────────────────────────────────────────────────
     REDIS_URL: str = "redis://localhost:6379"
 
+    # ── n8n Integration ────────────────────────────────────────
+    N8N_BASE_URL: str = os.getenv("N8N_BASE_URL", "http://localhost:5678")
+    N8N_WEBHOOK_URL: str = os.getenv(
+        "N8N_WEBHOOK_URL", "http://localhost:5678/webhook/ares-emergency"
+    )
+    N8N_EVENT_WEBHOOK_URL: str = os.getenv(
+        "N8N_EVENT_WEBHOOK_URL", "http://localhost:5678/webhook/ares-event"
+    )
+
     # ── Auth / JWT ─────────────────────────────────────────────
     SECRET_KEY: str = "ares-emergency-super-secret-key-2026-production"
     ALGORITHM: str = "HS256"

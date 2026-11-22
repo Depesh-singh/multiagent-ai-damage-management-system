@@ -79,6 +79,31 @@ export const App: React.FC = () => {
   const [loadingIncidentId, setLoadingIncidentId] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [dbConnected, setDbConnected] = useState(false);
+  const [n8nConnected, setN8nConnected] = useState(false);
+  const [isSyncingFeed, setIsSyncingFeed] = useState(false);
+
+  // Check n8n multi-agent status
+  const checkN8nStatus = async () => {
+    try {
+      const status = await aresApi.getN8nStatus();
+      setN8nConnected(Boolean(status?.connected));
+    } catch {
+      setN8nConnected(false);
+    }
+  };
+
+  // Sync Live Real-Time Disasters (USGS Live Earthquakes)
+  const handleSyncLiveFeed = async () => {
+    setIsSyncingFeed(true);
+    try {
+      await aresApi.syncRealtimeDisasterFeed(true);
+      await loadAllData();
+    } catch (err) {
+      console.error('Error syncing live feed:', err);
+    } finally {
+      setIsSyncingFeed(false);
+    }
+  };
 
   // Real-time WebSocket sync with automatic fallback
   useAresWebSocket({
@@ -93,7 +118,11 @@ export const App: React.FC = () => {
   // Initial Data Load & Continuous 5-Second Telemetry Sync
   useEffect(() => {
     loadAllData();
-    const interval = setInterval(loadAllData, 5000);
+    checkN8nStatus();
+    const interval = setInterval(() => {
+      loadAllData();
+      checkN8nStatus();
+    }, 5000);
     return () => clearInterval(interval);
   }, []);
 
@@ -307,8 +336,11 @@ export const App: React.FC = () => {
           title={currentHeader.title}
           subtitle={currentHeader.subtitle}
           dbConnected={dbConnected}
+          n8nConnected={n8nConnected}
           isRefreshing={isRefreshing}
           onRefresh={loadAllData}
+          onSyncLiveFeed={handleSyncLiveFeed}
+          isSyncingFeed={isSyncingFeed}
           currentUser={currentUser}
           notificationCount={pendingApprovalsCount}
         />

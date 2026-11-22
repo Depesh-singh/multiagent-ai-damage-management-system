@@ -333,10 +333,11 @@ export const IncidentManagementView: React.FC<IncidentManagementViewProps> = ({
                 <button
                   onClick={() => onTriggerResponse(activeInc.id)}
                   disabled={loadingIncidentId === activeInc.id}
-                  className="bg-[#23B9D6] hover:bg-[#1BA2BD] text-black font-bold px-3 py-1 rounded text-xs flex items-center space-x-1.5 transition"
+                  className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold px-3 py-1 rounded text-xs flex items-center space-x-1.5 transition shadow-sm"
+                  title="Run Full 10-Agent Response via n8n Orchestrator (Port 5678)"
                 >
                   <Zap className={`w-3.5 h-3.5 ${loadingIncidentId === activeInc.id ? 'animate-spin' : ''}`} />
-                  <span>{loadingIncidentId === activeInc.id ? 'Triggering...' : 'Assign Response'}</span>
+                  <span>{loadingIncidentId === activeInc.id ? 'Running n8n...' : '⚡ Run via n8n'}</span>
                 </button>
 
                 <button
