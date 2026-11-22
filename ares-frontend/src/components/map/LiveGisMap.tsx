@@ -89,6 +89,7 @@ export const LiveGisMap: React.FC<MapProps> = ({
   const layerGroupRef = useRef<L.LayerGroup | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   const labelLayerRef = useRef<L.TileLayer | null>(null);
+  const lastFocusedIncidentIdRef = useRef<string | null>(null);
 
   // Basemap style selector (Defaults to 100% Reliable Tactical Dark)
   const [mapStyle, setMapStyle] = useState<BasemapStyle>('tactical_dark');
@@ -415,14 +416,14 @@ export const LiveGisMap: React.FC<MapProps> = ({
           className: 'custom-inc-marker',
           html: `
             <div class="relative flex items-center justify-center">
-              <span class="absolute inline-flex h-8 w-8 rounded-full bg-red-500 opacity-75 animate-ping"></span>
-              <div style="background-color: #EF4444; color: white; width: 34px; height: 34px; border-radius: 50%; border: ${isSelected ? '3px solid #23B9D6' : '3px solid #FFFFFF'}; display: flex; align-items: center; justify-content: center; font-size: 16px; box-shadow: 0 0 15px #EF4444;">
+              <div style="position: absolute; width: 44px; height: 44px; border-radius: 50%; background: rgba(239, 68, 68, 0.22); border: 1.5px solid rgba(239, 68, 68, 0.6); box-shadow: 0 0 14px rgba(239, 68, 68, 0.5);"></div>
+              <div style="background-color: #EF4444; color: white; width: 34px; height: 34px; border-radius: 50%; border: ${isSelected ? '3px solid #23B9D6' : '3px solid #FFFFFF'}; display: flex; align-items: center; justify-content: center; font-size: 16px; position: relative; z-index: 2; box-shadow: 0 0 12px rgba(239, 68, 68, 0.8);">
                 ⚠️
               </div>
             </div>
           `,
-          iconSize: [34, 34],
-          iconAnchor: [17, 17],
+          iconSize: [44, 44],
+          iconAnchor: [22, 22],
         });
         const marker = L.marker([inc.location_lat, inc.location_lng], { icon });
         marker.bindPopup(`
@@ -449,19 +450,36 @@ export const LiveGisMap: React.FC<MapProps> = ({
       });
     }
 
-    // Auto-focus selected incident
-    if (selectedIncident && typeof selectedIncident.location_lat === 'number' && typeof selectedIncident.location_lng === 'number') {
-      map.flyTo([selectedIncident.location_lat, selectedIncident.location_lng], 13.5, { duration: 0.8 });
+    // Auto-focus selected incident ONLY when the selected incident changes (prevents map jumping on poll)
+    if (
+      selectedIncident &&
+      typeof selectedIncident.location_lat === 'number' &&
+      typeof selectedIncident.location_lng === 'number'
+    ) {
+      if (selectedIncident.id !== lastFocusedIncidentIdRef.current) {
+        lastFocusedIncidentIdRef.current = selectedIncident.id;
+        const isLocalKolkata =
+          selectedIncident.location_lat > 20 &&
+          selectedIncident.location_lat < 25 &&
+          selectedIncident.location_lng > 86 &&
+          selectedIncident.location_lng < 90;
+        const targetZoom = isLocalKolkata ? 13 : 7;
+        map.flyTo(
+          [selectedIncident.location_lat, selectedIncident.location_lng],
+          targetZoom,
+          { duration: 0.8 }
+        );
+      }
     }
   }, [incidents, hospitals, ambulances, rescueTeams, shelters, routes, riskZones, roadClosures, layers, selectedIncident]);
 
   return (
-    <div className="relative w-full h-full min-h-[500px] rounded-lg overflow-hidden border border-[#1E3A5F]">
+    <div className="relative w-full h-full min-h-[300px] rounded-lg overflow-hidden border border-[#1E3A5F]">
       {/* Map Canvas */}
       <div
         ref={mapContainerRef}
         className="w-full h-full"
-        style={{ minHeight: '500px', height: '100%', width: '100%' }}
+        style={{ height: '100%', width: '100%' }}
       />
 
       {/* Top Map Floating Header: Basemap Selectors + Layers */}

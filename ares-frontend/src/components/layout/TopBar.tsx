@@ -72,14 +72,14 @@ export const TopBar: React.FC<TopBarProps> = ({
   }, []);
 
   return (
-    <header className="h-16 bg-[#101C2B] border-b border-[#263B50] px-4 flex items-center justify-between shrink-0 select-none z-20">
+    <header className="h-[68px] bg-[#101C2B] border-b border-[#263B50] px-5 flex items-center justify-between shrink-0 select-none z-20">
       {/* Left: Page Title & Description */}
       <div className="flex flex-col justify-center min-w-0 pr-4">
-        <h1 className="text-white text-base font-bold tracking-tight truncate flex items-center space-x-2">
+        <h1 className="text-white text-lg font-black tracking-tight truncate flex items-center space-x-2">
           <span>{title}</span>
         </h1>
         {subtitle && (
-          <p className="text-[11px] text-[#94A3B8] tracking-tight truncate">
+          <p className="text-xs text-[#94A3B8] tracking-tight truncate mt-0.5">
             {subtitle}
           </p>
         )}
@@ -89,9 +89,9 @@ export const TopBar: React.FC<TopBarProps> = ({
       <div className="flex items-center space-x-3 shrink-0">
         {/* n8n Multi-Agent Engine Badge */}
         <div
-          className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border font-mono ${
+          className={`flex items-center space-x-2 px-3 py-1.5 rounded-full text-xs font-semibold border font-mono ${
             n8nConnected
-              ? 'bg-amber-950/50 text-[#F59E0B] border-amber-800/80 shadow-[0_0_10px_rgba(245,158,11,0.2)]'
+              ? 'bg-amber-950/60 text-[#F59E0B] border-amber-800 shadow-[0_0_12px_rgba(245,158,11,0.25)]'
               : 'bg-slate-900/60 text-[#64748B] border-slate-700/60'
           }`}
           title={
@@ -100,7 +100,7 @@ export const TopBar: React.FC<TopBarProps> = ({
               : 'n8n Engine Standby'
           }
         >
-          <Zap className={`w-3.5 h-3.5 ${n8nConnected ? 'text-[#F59E0B] animate-pulse' : 'text-[#64748B]'}`} />
+          <Zap className={`w-4 h-4 ${n8nConnected ? 'text-[#F59E0B] animate-pulse' : 'text-[#64748B]'}`} />
           <span className="hidden sm:inline font-bold">
             {n8nConnected ? 'n8n Active (5678)' : 'n8n Standby'}
           </span>
@@ -111,27 +111,27 @@ export const TopBar: React.FC<TopBarProps> = ({
           <button
             onClick={onSyncLiveFeed}
             disabled={isSyncingFeed}
-            className="flex items-center space-x-1.5 px-3 py-1 rounded-md bg-gradient-to-r from-cyan-950 to-blue-950 hover:from-cyan-900 hover:to-blue-900 text-cyan-300 border border-cyan-700/60 text-[11px] font-semibold transition shadow-sm disabled:opacity-50"
+            className="flex items-center space-x-2 px-3.5 py-1.5 rounded-md bg-gradient-to-r from-cyan-950 to-blue-950 hover:from-cyan-900 hover:to-blue-900 text-cyan-300 border border-cyan-700/60 text-xs font-bold transition shadow-sm disabled:opacity-50"
             title="Fetch Real-Time USGS Earthquakes & Environmental Disasters (Zero Mock Data)"
           >
-            <Globe className={`w-3.5 h-3.5 ${isSyncingFeed ? 'animate-spin text-cyan-400' : 'text-cyan-300'}`} />
+            <Globe className={`w-4 h-4 ${isSyncingFeed ? 'animate-spin text-cyan-400' : 'text-cyan-300'}`} />
             <span className="hidden md:inline">
-              {isSyncingFeed ? 'Syncing Real-Time...' : '🌐 Real-Time Live Feed'}
+              {isSyncingFeed ? 'Syncing Live...' : '🌐 Real-Time Live Feed'}
             </span>
           </button>
         )}
 
         {/* Backend Connection Health Badge */}
         <div
-          className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border font-mono ${
+          className={`flex items-center space-x-2 px-3 py-1.5 rounded-full text-xs font-semibold border font-mono ${
             dbConnected
-              ? 'bg-emerald-950/50 text-[#22C55E] border-emerald-800/80'
-              : 'bg-red-950/50 text-[#EF4444] border-red-800/80'
+              ? 'bg-emerald-950/60 text-[#22C55E] border-emerald-800 shadow-[0_0_10px_rgba(34,197,94,0.2)]'
+              : 'bg-red-950/60 text-[#EF4444] border-red-800'
           }`}
           title={dbConnected ? 'Backend REST & DB Connected' : 'Backend Disconnected'}
         >
           <span
-            className={`w-2 h-2 rounded-full inline-block ${
+            className={`w-2.5 h-2.5 rounded-full inline-block ${
               dbConnected ? 'bg-[#22C55E] pulse-live' : 'bg-[#EF4444] pulse-critical'
             }`}
           />

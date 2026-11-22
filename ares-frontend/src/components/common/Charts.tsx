@@ -29,21 +29,21 @@ export const KpiCard: React.FC<KpiCardProps> = ({
   return (
     <div
       onClick={onClick}
-      className={`ares-card p-3.5 flex items-center justify-between border ${borderColor} ${
+      className={`ares-card p-4 flex items-center justify-between border ${borderColor} transition-all duration-200 hover:shadow-lg ${
         onClick ? 'cursor-pointer hover:border-[#354E69]' : ''
       }`}
     >
-      <div className="space-y-1 min-w-0">
-        <div className="text-[11px] font-medium text-[#94A3B8] tracking-wide uppercase truncate">
+      <div className="space-y-1.5 min-w-0">
+        <div className="text-xs font-semibold text-[#94A3B8] tracking-wider uppercase truncate">
           {title}
         </div>
         <div className="flex items-baseline space-x-2">
-          <span className="text-xl font-bold font-mono text-white tracking-tight">
+          <span className="text-2xl lg:text-3xl font-extrabold font-mono text-white tracking-tight">
             {value}
           </span>
           {change && (
             <span
-              className={`text-[10px] font-mono font-medium flex items-center ${
+              className={`text-xs font-mono font-semibold flex items-center ${
                 changeType === 'increase'
                   ? 'text-[#22C55E]'
                   : changeType === 'decrease'
@@ -56,7 +56,7 @@ export const KpiCard: React.FC<KpiCardProps> = ({
           )}
         </div>
         {subtext && (
-          <div className="text-[10px] text-[#64748B] truncate font-mono">
+          <div className="text-[11px] text-[#94A3B8] truncate font-mono">
             {subtext}
           </div>
         )}
@@ -64,7 +64,7 @@ export const KpiCard: React.FC<KpiCardProps> = ({
 
       {icon && (
         <div
-          className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 border border-[#263B50]/60 ${iconBg}`}
+          className={`w-11 h-11 rounded-lg flex items-center justify-center shrink-0 border border-[#263B50]/60 ${iconBg}`}
         >
           {icon}
         </div>

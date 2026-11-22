@@ -346,7 +346,7 @@ export const App: React.FC = () => {
         />
 
         {/* Dynamic Reconstructed Views */}
-        <main className="flex-1 overflow-hidden relative flex flex-col min-h-0 bg-[#080F1B]">
+        <main className="flex-1 overflow-y-auto relative flex flex-col min-h-0 bg-[#080F1B]">
           {/* SCREEN 01: COMMAND CENTRE */}
           {activeTab === 'dashboard' && (
             <CommandCentreView

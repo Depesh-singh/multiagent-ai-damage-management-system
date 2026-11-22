@@ -107,13 +107,13 @@ export const CommandCentreView: React.FC<CommandCentreViewProps> = ({
   ];
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-y-auto p-4 space-y-4 select-none">
+    <div className="flex-1 flex flex-col min-h-full p-4 lg:p-6 space-y-6 select-none pb-16">
       {/* Top Page Subheader with Region Selector & Last Update */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl font-bold text-white tracking-tight">Command Centre</h2>
-          <p className="text-xs text-[#94A3B8]">
-            Live Operational Overview — Incident Detection, Response Coordination and Resource Management
+          <h2 className="text-2xl font-black text-white tracking-tight">Command Centre</h2>
+          <p className="text-sm text-[#94A3B8] font-medium mt-0.5">
+            Live Operational Overview — Autonomous Multi-Agent Coordination, Incident Detection & Resource Management
           </p>
         </div>
 
@@ -121,7 +121,7 @@ export const CommandCentreView: React.FC<CommandCentreViewProps> = ({
           <select
             value={selectedRegion}
             onChange={(e) => setSelectedRegion(e.target.value)}
-            className="bg-[#132438] border border-[#263B50] rounded-md px-3 py-1.5 text-xs text-white font-mono focus:outline-none focus:border-[#23B9D6]"
+            className="bg-[#132438] border border-[#263B50] rounded-md px-3.5 py-2 text-xs font-semibold text-white font-mono focus:outline-none focus:border-[#23B9D6]"
           >
             <option value="Kolkata Metropolitan Region">📍 Kolkata Metropolitan Region</option>
             <option value="Howrah Emergency District">📍 Howrah Emergency District</option>
@@ -132,7 +132,7 @@ export const CommandCentreView: React.FC<CommandCentreViewProps> = ({
           <button
             onClick={onRefresh}
             disabled={isRefreshing}
-            className="bg-[#132438] hover:bg-[#172B40] border border-[#263B50] text-[#94A3B8] hover:text-white rounded-md px-3 py-1.5 text-xs flex items-center space-x-1.5 transition font-mono"
+            className="bg-[#132438] hover:bg-[#172B40] border border-[#263B50] text-[#94A3B8] hover:text-white rounded-md px-3.5 py-2 text-xs flex items-center space-x-1.5 transition font-mono font-medium"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-[#23B9D6]' : ''}`} />
             <span>Last Updated: {new Date().toLocaleTimeString()}</span>
@@ -141,7 +141,7 @@ export const CommandCentreView: React.FC<CommandCentreViewProps> = ({
       </div>
 
       {/* Row 1: 5 KPI Cards (Exact match to Reference Screenshot 01) */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
         <KpiCard
           title="Active Incidents"
           value={activeIncidentsCount || 12}
@@ -195,10 +195,10 @@ export const CommandCentreView: React.FC<CommandCentreViewProps> = ({
       </div>
 
       {/* Row 2: Live Operations Map & Active Incidents Feed */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 min-h-[380px]">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         {/* Left: Mini Live Operations Map (7 cols) */}
-        <div className="lg:col-span-7 ares-card p-3.5 flex flex-col">
-          <div className="flex items-center justify-between pb-2 mb-2 border-b border-[#263B50]">
+        <div className="lg:col-span-7 ares-card p-4 flex flex-col h-[520px]">
+          <div className="flex items-center justify-between pb-2.5 mb-2.5 border-b border-[#263B50]">
             <div className="flex items-center space-x-2">
               <MapPin className="w-4 h-4 text-[#23B9D6]" />
               <span className="text-xs font-bold text-white uppercase tracking-wider">
@@ -207,14 +207,14 @@ export const CommandCentreView: React.FC<CommandCentreViewProps> = ({
             </div>
             <button
               onClick={() => onNavigateTab('map')}
-              className="text-[#23B9D6] hover:text-white text-xs font-medium flex items-center space-x-1 transition"
+              className="text-[#23B9D6] hover:text-white text-xs font-semibold flex items-center space-x-1 transition"
             >
               <span>View Full Map</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
 
-          <div className="flex-1 w-full rounded overflow-hidden relative border border-[#263B50]/60 min-h-[280px]">
+          <div className="flex-1 w-full rounded overflow-hidden relative border border-[#263B50]/60 min-h-0">
             <LiveGisMap
               incidents={incidents}
               hospitals={hospitals}
@@ -231,8 +231,8 @@ export const CommandCentreView: React.FC<CommandCentreViewProps> = ({
         </div>
 
         {/* Right: Active Incidents Feed (5 cols) */}
-        <div className="lg:col-span-5 ares-card p-3.5 flex flex-col">
-          <div className="flex items-center justify-between pb-2 mb-2 border-b border-[#263B50]">
+        <div className="lg:col-span-5 ares-card p-4 flex flex-col h-[520px]">
+          <div className="flex items-center justify-between pb-2.5 mb-2.5 border-b border-[#263B50]">
             <div className="flex items-center space-x-2">
               <AlertTriangle className="w-4 h-4 text-[#EF4444]" />
               <span className="text-xs font-bold text-white uppercase tracking-wider">
@@ -241,14 +241,14 @@ export const CommandCentreView: React.FC<CommandCentreViewProps> = ({
             </div>
             <button
               onClick={() => onNavigateTab('incidents')}
-              className="text-[#23B9D6] hover:text-white text-xs font-medium flex items-center space-x-1 transition"
+              className="text-[#23B9D6] hover:text-white text-xs font-semibold flex items-center space-x-1 transition"
             >
               <span>View All</span>
               <ChevronRight className="w-3.5 h-3.5" />
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto space-y-2 pr-1 max-h-[340px]">
+          <div className="flex-1 overflow-y-auto space-y-2.5 pr-1 min-h-0">
             {incidents.length === 0 ? (
               <div className="h-40 flex items-center justify-center text-xs text-[#94A3B8]">
                 No active incidents registered.
@@ -266,9 +266,9 @@ export const CommandCentreView: React.FC<CommandCentreViewProps> = ({
                       onSelectIncident(inc);
                       onNavigateTab('incidents');
                     }}
-                    className={`p-2.5 rounded-md border cursor-pointer transition ${
+                    className={`p-3 rounded-md border cursor-pointer transition ${
                       isSelected
-                        ? 'border-[#23B9D6] bg-[#172B40]'
+                        ? 'border-[#23B9D6] bg-[#172B40] shadow-md'
                         : 'border-[#263B50] bg-[#0D1829] hover:border-[#354E69]'
                     }`}
                   >
@@ -276,13 +276,13 @@ export const CommandCentreView: React.FC<CommandCentreViewProps> = ({
                       <div className="min-w-0">
                         <div className="text-xs font-bold text-white truncate flex items-center space-x-1.5">
                           <span
-                            className={`w-1.5 h-1.5 rounded-full ${
+                            className={`w-2 h-2 rounded-full ${
                               inc.severity >= 4 ? 'bg-[#EF4444]' : 'bg-[#F59E0B]'
                             }`}
                           />
                           <span>{inc.name || `${inc.disaster_type} - ${inc.address?.slice(0, 28) || 'Kolkata'}`}</span>
                         </div>
-                        <div className="text-[11px] text-[#94A3B8] truncate mt-0.5 font-mono">
+                        <div className="text-xs text-[#94A3B8] truncate mt-1 font-mono">
                           {inc.address || 'Kolkata Metropolitan Area'}
                         </div>
                       </div>
@@ -292,7 +292,7 @@ export const CommandCentreView: React.FC<CommandCentreViewProps> = ({
                           status={severityLabel}
                           variant={inc.severity >= 4 ? 'critical' : inc.severity === 3 ? 'warning' : 'safe'}
                         />
-                        <div className="text-[9px] text-[#64748B] font-mono mt-1">
+                        <div className="text-[10px] text-[#64748B] font-mono mt-1">
                           {inc.created_at ? new Date(inc.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'}
                         </div>
                       </div>
@@ -306,10 +306,10 @@ export const CommandCentreView: React.FC<CommandCentreViewProps> = ({
       </div>
 
       {/* Row 3: Severity Distribution, Agent Orchestration, Resource Utilization */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Incident Severity Distribution */}
-        <div className="ares-card p-3.5 flex flex-col justify-between">
-          <div className="flex items-center justify-between pb-2 border-b border-[#263B50] mb-3">
+        <div className="ares-card p-4 flex flex-col justify-between min-h-[260px]">
+          <div className="flex items-center justify-between pb-2.5 border-b border-[#263B50] mb-3">
             <span className="text-xs font-bold text-white uppercase tracking-wider flex items-center space-x-2">
               <Activity className="w-4 h-4 text-[#23B9D6]" />
               <span>Incident Severity Distribution</span>
@@ -320,39 +320,39 @@ export const CommandCentreView: React.FC<CommandCentreViewProps> = ({
             segments={severitySegments}
             centerValue={incidents.length || 12}
             centerLabel="Incidents"
-            size={120}
-            strokeWidth={14}
+            size={135}
+            strokeWidth={16}
           />
         </div>
 
         {/* AI Agent Orchestration (10 Specialists) */}
-        <div className="ares-card p-3.5 flex flex-col">
-          <div className="flex items-center justify-between pb-2 border-b border-[#263B50] mb-2.5">
+        <div className="ares-card p-4 flex flex-col min-h-[260px]">
+          <div className="flex items-center justify-between pb-2.5 border-b border-[#263B50] mb-3">
             <span className="text-xs font-bold text-white uppercase tracking-wider flex items-center space-x-2">
               <Cpu className="w-4 h-4 text-[#23B9D6]" />
               <span>AI Agent Orchestration</span>
             </span>
-            <span className="bg-[#23B9D6]/15 text-[#23B9D6] border border-[#23B9D6]/40 text-[10px] font-mono px-2 py-0.5 rounded font-bold">
+            <span className="bg-[#23B9D6]/15 text-[#23B9D6] border border-[#23B9D6]/40 text-xs font-mono px-2.5 py-0.5 rounded font-bold">
               10 Agents
             </span>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 text-xs flex-1">
+          <div className="grid grid-cols-2 gap-2.5 text-xs flex-1">
             {agentRoster.map((ag, i) => (
               <div
                 key={i}
-                className="bg-[#0D1829] p-1.5 rounded border border-[#263B50]/60 flex items-center justify-between"
+                className="bg-[#0D1829] p-2 rounded-md border border-[#263B50]/60 flex items-center justify-between hover:border-[#23B9D6]/40 transition"
               >
-                <span className="text-[11px] text-[#F1F5F9] truncate font-medium">{ag.name}</span>
-                <span className="w-2 h-2 rounded-full bg-[#22C55E] shrink-0 pulse-live" />
+                <span className="text-xs text-[#F1F5F9] truncate font-medium">{ag.name}</span>
+                <span className="w-2.5 h-2.5 rounded-full bg-[#22C55E] shrink-0 pulse-live shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
               </div>
             ))}
           </div>
         </div>
 
         {/* Resource Utilization */}
-        <div className="ares-card p-3.5 flex flex-col justify-between space-y-2.5">
-          <div className="flex items-center justify-between pb-2 border-b border-[#263B50]">
+        <div className="ares-card p-4 flex flex-col justify-between min-h-[260px] space-y-3">
+          <div className="flex items-center justify-between pb-2.5 border-b border-[#263B50]">
             <span className="text-xs font-bold text-white uppercase tracking-wider flex items-center space-x-2">
               <Activity className="w-4 h-4 text-[#23B9D6]" />
               <span>Resource Utilization</span>
